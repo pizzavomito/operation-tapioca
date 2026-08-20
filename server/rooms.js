@@ -139,7 +139,15 @@ export class RoomStore {
           players: new Map(
             r.players.map((p) => [
               p.id,
-              { ...p, ws: null, connected: false, isSpectator: !!p.isSpectator, reportsMade: p.reportsMade || [] },
+              {
+                ...p,
+                ws: null,
+                connected: false,
+                isSpectator: !!p.isSpectator,
+                reportsMade: p.reportsMade || [],
+                pushSubscription: p.pushSubscription || null,
+                visible: true,
+              },
             ])
           ),
           tokenIndex: new Map(r.tokenIndex),

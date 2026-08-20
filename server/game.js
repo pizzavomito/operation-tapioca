@@ -32,6 +32,8 @@ export function createPlayer({ id, token, name, isHost, isSpectator }) {
     reportsMade: [],
     sosHandled: 0,
     contaminations: 0,
+    pushSubscription: null, // abonnement Web Push, voir server/push.js
+    visible: true, // Page Visibility API côté client : false = page en arrière-plan
   };
 }
 

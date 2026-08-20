@@ -23,6 +23,8 @@ export const C2S = {
   SETTINGS_UPDATE: 'settings:update', // hôte, { missionQueueMax: 1-3 }
   TABOO_ADD: 'taboo:add', // hôte, { text }
   CHEER: 'cheer', // spectateur, { emoji } — un des CHEER_EMOJIS ci-dessous
+  PUSH_SUBSCRIBE: 'push:subscribe', // { subscription } — objet PushSubscription.toJSON()
+  VISIBILITY: 'visibility', // { visible: boolean } — Page Visibility API côté client
 };
 
 // Serveur -> client

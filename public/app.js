@@ -170,6 +170,8 @@ function handleNotify(payload) {
   switch (payload.kind) {
     case 'session':
       saveSession({ playerId: payload.playerId, token: payload.token, roomCode: payload.roomCode });
+      setupPush(); // (re)lie l'abonnement push à ce playerId — sans bloquer si refusé
+      sendVisibility();
       render();
       break;
     case 'joined':
@@ -396,6 +398,45 @@ function renderTabBar() {
   tabBarEl.querySelector('#tab-mission').classList.toggle('active', ui.view !== 'dossier');
   tabBarEl.querySelector('#tab-dossier').classList.toggle('active', ui.view === 'dossier');
 }
+
+// Notifications push : réveille le téléphone même page en arrière-plan ou fermée — chose que
+// navigator.vibrate() ne peut jamais faire (le navigateur suspend le JS hors premier plan).
+// Échoue silencieusement si refusé/non supporté : le flash visuel reste le repli dans ce cas.
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = atob(base64);
+  const out = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; i++) out[i] = rawData.charCodeAt(i);
+  return out;
+}
+
+async function setupPush() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      const keyRes = await fetch('/push/vapid-public-key');
+      const publicKey = (await keyRes.text()).trim();
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(publicKey),
+      });
+    }
+    socket.send(C2S.PUSH_SUBSCRIBE, { subscription: sub.toJSON() });
+  } catch {
+    // permission refusée, ou navigateur qui n'implémente pas fidèlement l'API — pas grave
+  }
+}
+
+// Page Visibility API : le serveur ne notifie en push que si la page n'est pas au premier
+// plan (sinon le message WS + navigator.vibrate() normal suffisent, pas la peine de doubler).
+function sendVisibility() {
+  if (!session) return;
+  socket.send(C2S.VISIBILITY, { visible: document.visibilityState === 'visible' });
+}
+document.addEventListener('visibilitychange', sendVisibility);
 
 async function boot() {
   try {

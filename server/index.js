@@ -8,6 +8,7 @@ import QRCode from 'qrcode';
 
 import { RoomStore, newId, newToken } from './rooms.js';
 import * as game from './game.js';
+import * as push from './push.js';
 import { C2S, S2C, SNAPSHOT_INTERVAL_MS, PING_INTERVAL_MS } from './protocol.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -21,6 +22,8 @@ app.use(express.static(PUBLIC_DIR));
 app.get('/protocol.js', (req, res) => res.sendFile(path.join(__dirname, 'protocol.js')));
 // Le deck de tabous génériques est une connaissance commune (§4.3) : seule l'attribution par joueur est secrète.
 app.get('/taboos.json', (req, res) => res.sendFile(path.join(__dirname, 'data', 'taboos.json')));
+// Clé publique VAPID pour l'abonnement Web Push côté client (notifications même app en arrière-plan).
+app.get('/push/vapid-public-key', (req, res) => res.type('text/plain').send(push.getPublicKey()));
 
 // QR code de la partie (écran Salon, §6) : encode l'URL de rejoin directe.
 app.get('/qr/:code.svg', async (req, res) => {
@@ -54,11 +57,32 @@ function sendError(ws, message) {
 // Un seul mécanisme de synchronisation pour tout le jeu : simple, jamais désynchronisé.
 function broadcast(room, perPlayerMsgFn) {
   for (const player of room.players.values()) {
-    if (!player.connected || !player.ws) continue;
     const extra = perPlayerMsgFn ? perPlayerMsgFn(player.id) : null;
-    if (extra) sendJSON(player.ws, extra);
-    sendJSON(player.ws, game.serializeStateFor(room, player.id));
+    if (extra) {
+      if (player.connected && player.ws) sendJSON(player.ws, extra);
+      maybeSendPush(player, extra);
+    }
+    if (player.connected && player.ws) sendJSON(player.ws, game.serializeStateFor(room, player.id));
   }
+}
+
+// Notification système, en plus du message WS : le seul moyen d'atteindre un joueur dont la
+// page est en arrière-plan (le navigateur suspend son JS, navigator.vibrate() ne se déclenche
+// plus, la connexion WS ne sert plus à rien pour le prévenir). Limité aux deux événements
+// vraiment urgents — pas la peine de notifier une mission validée ou un score qui bouge.
+function maybeSendPush(player, extra) {
+  if (!player.pushSubscription) return;
+  if (player.visible && player.connected) return; // déjà affiché à l'écran, pas la peine de doubler
+  let notif = null;
+  if (extra.type === S2C.SOS_ALERT) {
+    notif = { title: 'SOS Batterie 🆘', body: `${extra.payload.raisedByName} a besoin d'air.`, tag: 'sos' };
+  } else if (extra.type === S2C.WITNESS_REQUEST) {
+    notif = { title: 'On a besoin de toi', body: `${extra.payload.requesterName} réclame un témoin.`, tag: 'witness' };
+  }
+  if (!notif) return;
+  push.sendPush(player.pushSubscription, notif).then(({ gone }) => {
+    if (gone) player.pushSubscription = null; // abonnement mort confirmé : on arrête d'essayer
+  });
 }
 
 wss.on('connection', (ws) => {
@@ -97,6 +121,7 @@ wss.on('connection', (ws) => {
     if (player && player.ws === ws) {
       player.connected = false;
       player.ws = null;
+      player.visible = false; // plus de connexion active : le push est le seul moyen de le joindre
       game.logEvent(room, `💤 ${player.name} a perdu la connexion.`);
       broadcast(room, (targetId) =>
         targetId === playerId ? null : { type: S2C.NOTIFY, payload: { kind: 'disconnected', name: player.name } }
@@ -116,6 +141,7 @@ function handleJoin(ws, payload) {
       const player = room.players.get(playerId);
       player.ws = ws;
       player.connected = true;
+      player.visible = true; // corrigé sous peu par le premier message "visibility" du client si besoin
       ws.meta = { roomCode: room.code, playerId };
       sendJSON(ws, { type: S2C.NOTIFY, payload: { kind: 'session', playerId, token: player.token, roomCode: room.code } });
       game.logEvent(room, `👋 ${player.name} est de retour.`);
@@ -265,6 +291,16 @@ function handleAction(ws, room, player, type, payload) {
     case C2S.CHEER: {
       const res = game.sendCheer(room, player, payload.emoji, broadcast);
       if (res.error) sendError(ws, res.error);
+      break;
+    }
+
+    case C2S.PUSH_SUBSCRIBE: {
+      player.pushSubscription = payload.subscription || null;
+      break; // pas de broadcast : c'est un détail de transport, personne d'autre n'a besoin de le savoir
+    }
+
+    case C2S.VISIBILITY: {
+      player.visible = !!payload.visible;
       break;
     }
 
