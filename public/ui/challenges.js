@@ -33,11 +33,13 @@ export function render(root, ctx) {
         <p>Des moments visibles, en plus des missions discrètes.</p>
       </div>
 
-      ${me.myChallenge && me.myChallenge.status === 'accepted' ? `
+      ${me.myChallenge && (me.myChallenge.status === 'accepted' || me.myChallenge.status === 'claimed') ? `
         <div class="card challenge-active">
           <div class="tag tag-${me.myChallenge.level === 'corse' ? 'audacieux' : 'facile'}">${me.myChallenge.level === 'corse' ? 'Corsé' : 'Léger'}</div>
           <p class="mission-text">${esc(me.myChallenge.text)}</p>
-          <p class="muted small">${esc(me.myChallenge.fromName)} valide lui-même quand c'est fait — rien à faire ici.</p>
+          ${me.myChallenge.status === 'accepted'
+            ? `<button class="btn btn-primary btn-block" id="challenge-claim">J'ai fini</button>`
+            : `<p class="muted small">${esc(me.myChallenge.fromName)} est prévenu, il valide quand il constate.</p>`}
         </div>
       ` : ''}
 
@@ -48,6 +50,8 @@ export function render(root, ctx) {
           <p class="mission-text">${esc(myLaunched.text)}</p>
           ${myLaunched.status === 'pending'
             ? `<p class="muted small">En attente que ${esc(myLaunched.targetName)} accepte.</p>`
+            : myLaunched.status === 'accepted'
+            ? `<p class="muted small">En attente que ${esc(myLaunched.targetName)} signale que c'est fait.</p>`
             : `<button class="btn btn-primary btn-block" id="challenge-validate">C'est fait</button>`}
         </div>
       ` : `
@@ -108,6 +112,12 @@ export function render(root, ctx) {
       ` : ''}
     </div>
   `);
+
+  el.querySelector('#challenge-claim')?.addEventListener('click', (e) => {
+    e.target.disabled = true;
+    vibrate(20);
+    ctx.actions.claimChallenge(me.myChallenge.id);
+  });
 
   el.querySelector('#challenge-validate')?.addEventListener('click', (e) => {
     e.target.disabled = true;

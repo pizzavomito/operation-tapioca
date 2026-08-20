@@ -522,6 +522,10 @@ export function sendChatMessage(room, player, text, broadcast) {
 // valide que c'est fait (plutôt que la cible qui s'auto-déclare) : un défi direct est un moment
 // que le lanceur observe en personne, il est donc le mieux placé pour trancher — comme pour
 // les défis ouverts, où c'est déjà lui qui désigne le gagnant.
+//
+// Cycle de vie d'un défi direct : pending (à accepter) -> accepted (à faire) -> claimed (la
+// cible dit avoir fini, prévient le lanceur) -> supprimé une fois validé par le lanceur. Décliner,
+// laisser expirer ou refuser une validation trop précipitée reste toujours sans pénalité.
 
 function remainingCooldown(lastAt, cooldownMs) {
   const remaining = (lastAt || 0) + cooldownMs - Date.now();
@@ -549,7 +553,7 @@ export function sendDirectChallenge(room, launcher, targetId, cardId, content, b
     targetId,
     level: card.level,
     text: card.text,
-    status: 'pending', // pending (à accepter) -> accepted (à faire) -> supprimé une fois résolu
+    status: 'pending', // voir cycle de vie en tête de section
     createdAt: Date.now(),
     timer,
   });
@@ -584,9 +588,29 @@ export function respondChallenge(room, player, challengeId, accept, broadcast) {
   return {};
 }
 
-export function validateChallenge(room, launcher, challengeId, broadcast) {
+// La cible signale qu'elle a fini (accepted -> claimed) : le lanceur, prévenu, n'a plus qu'à
+// confirmer. Sans ce signal, le lanceur devait deviner le bon moment tout seul.
+export function claimChallenge(room, player, challengeId, broadcast) {
   const challenge = room.challenges.get(challengeId);
   if (!challenge || challenge.status !== 'accepted') return { error: "Ce défi n'est plus disponible." };
+  if (challenge.targetId !== player.id) return { error: 'Ce défi ne te concerne pas.' };
+  clearTimeout(challenge.timer);
+
+  challenge.status = 'claimed';
+  // Fenêtre repartie à zéro : le lanceur vient d'être prévenu, il doit avoir le temps de
+  // constater et valider plutôt qu'hériter d'un compte à rebours déjà bien entamé.
+  challenge.timer = setTimeout(() => expireChallenge(room, challengeId, broadcast), CHALLENGE_COMPLETE_WINDOW_MS);
+  broadcast(room, (tid) =>
+    tid === challenge.fromId
+      ? { type: S2C.NOTIFY, payload: { kind: 'challenge-claimed', name: player.name } }
+      : null
+  );
+  return {};
+}
+
+export function validateChallenge(room, launcher, challengeId, broadcast) {
+  const challenge = room.challenges.get(challengeId);
+  if (!challenge || challenge.status !== 'claimed') return { error: "Ce défi n'est plus disponible." };
   if (challenge.fromId !== launcher.id) return { error: "Seul l'agent qui a lancé ce défi peut le valider." };
   clearTimeout(challenge.timer);
 
@@ -743,7 +767,7 @@ export function serializeStateFor(room, playerId) {
   // pour les demandes de témoin.
   const myChallengeRaw = self?.isSpectator
     ? null
-    : [...room.challenges.values()].find((c) => c.targetId === playerId && (c.status === 'pending' || c.status === 'accepted'));
+    : [...room.challenges.values()].find((c) => c.targetId === playerId); // toujours non terminal : validé/refusé/expiré = supprimé de la map
   // Jamais l'objet interne tel quel (il porte un timer, non sérialisable) : juste ce que le client affiche.
   const myChallenge = myChallengeRaw
     ? {
@@ -756,7 +780,7 @@ export function serializeStateFor(room, playerId) {
       }
     : null;
   // Le défi que j'ai lancé moi-même : c'est moi qui verrai le bouton « C'est fait » une fois
-  // accepté, pas la cible (voir commentaire plus haut).
+  // que la cible a signalé avoir fini (status 'claimed'), pas la cible elle-même.
   const myLaunchedChallengeRaw = self?.isSpectator
     ? null
     : [...room.challenges.values()].find((c) => c.fromId === playerId);

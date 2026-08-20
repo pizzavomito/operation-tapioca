@@ -340,6 +340,12 @@ function handleAction(ws, room, player, type, payload) {
       break;
     }
 
+    case C2S.CHALLENGE_CLAIM: {
+      const res = game.claimChallenge(room, player, payload.challengeId, broadcast);
+      if (res.error) sendError(ws, res.error);
+      break;
+    }
+
     case C2S.CHALLENGE_VALIDATE: {
       const res = game.validateChallenge(room, player, payload.challengeId, broadcast);
       if (res.error) sendError(ws, res.error);

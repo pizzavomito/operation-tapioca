@@ -102,6 +102,7 @@ const actions = {
   sendChat: (text) => socket.send(C2S.CHAT_SEND, { text }),
   sendChallenge: (targetId, cardId) => socket.send(C2S.CHALLENGE_SEND, { targetId, cardId }),
   respondChallenge: (challengeId, accept) => socket.send(C2S.CHALLENGE_RESPOND, { challengeId, accept }),
+  claimChallenge: (challengeId) => socket.send(C2S.CHALLENGE_CLAIM, { challengeId }),
   validateChallenge: (challengeId) => socket.send(C2S.CHALLENGE_VALIDATE, { challengeId }),
   sendOpenChallenge: () => socket.send(C2S.OPEN_CHALLENGE_SEND, {}),
   awardOpenChallenge: (openChallengeId, winnerId) => socket.send(C2S.OPEN_CHALLENGE_AWARD, { openChallengeId, winnerId }),
@@ -262,6 +263,10 @@ function handleNotify(payload) {
     case 'challenge-accepted':
       showToast(`${payload.name} a accepté ton défi.`);
       break;
+    case 'challenge-claimed':
+      vibrate(15);
+      showToast(`${payload.name} dit avoir fini — à toi de valider.`);
+      break;
     case 'challenge-done':
       vibrate(15);
       showToast(`${payload.name} a validé ton défi !`);
@@ -321,9 +326,9 @@ function renderStatusStrip() {
   if (!serverState || serverState.room.status !== 'playing') return;
   const witnessCount = (serverState.pendingWitnessRequests || []).length;
   const sos = serverState.sos && serverState.sos.raisedBy !== serverState.me.id ? serverState.sos : null;
-  const activeChallenge =
-    (serverState.me.myChallenge && serverState.me.myChallenge.status === 'accepted' ? serverState.me.myChallenge : null) ||
-    (serverState.me.myLaunchedChallenge && serverState.me.myLaunchedChallenge.status === 'accepted' ? serverState.me.myLaunchedChallenge : null);
+  const inProgress = (c) => !!c && (c.status === 'accepted' || c.status === 'claimed');
+  const activeChallenge = (inProgress(serverState.me.myChallenge) ? serverState.me.myChallenge : null)
+    || (inProgress(serverState.me.myLaunchedChallenge) ? serverState.me.myLaunchedChallenge : null);
   if (!witnessCount && !sos && !activeChallenge) return;
 
   const pills = [];
@@ -490,7 +495,8 @@ function renderTabBar() {
   const challengesTab = tabBarEl.querySelector('#tab-challenges');
   if (challengesTab) {
     challengesTab.classList.toggle('active', ui.view === 'challenges');
-    const hasChallengeToHandle = !!(serverState.me?.myLaunchedChallenge?.status === 'accepted')
+    const hasChallengeToHandle = serverState.me?.myChallenge?.status === 'accepted' // à moi de signaler que j'ai fini
+      || serverState.me?.myLaunchedChallenge?.status === 'claimed' // à moi de valider
       || (serverState.openChallenges || []).some((o) => o.fromId === serverState.me?.id);
     tabBarEl.querySelector('#challenges-badge').hidden = ui.view === 'challenges' || !hasChallengeToHandle;
   }
