@@ -133,7 +133,15 @@ export class RoomStore {
       for (const r of raw.rooms || []) {
         const room = {
           ...r,
-          players: new Map(r.players.map((p) => [p.id, { ...p, ws: null, connected: false }])),
+          // Rétrocompatibilité : un snapshot pris avant l'ajout d'un champ ne l'a pas.
+          // Sans ce filet, un ancien snapshot fait planter le serveur en boucle au redémarrage.
+          log: r.log || [],
+          players: new Map(
+            r.players.map((p) => [
+              p.id,
+              { ...p, ws: null, connected: false, isSpectator: !!p.isSpectator, reportsMade: p.reportsMade || [] },
+            ])
+          ),
           tokenIndex: new Map(r.tokenIndex),
           allMissions: new Map(r.allMissions),
           claims: new Map(r.claims),

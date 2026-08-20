@@ -39,6 +39,7 @@ export function createPlayer({ id, token, name, isHost, isSpectator }) {
 // c'est le seul endroit qui raconte ce qu'il se passe pour ceux qui suivent sans jouer.
 const LOG_MAX = 60;
 export function logEvent(room, text) {
+  if (!room.log) room.log = []; // filet si un snapshot plus ancien que ce champ a été restauré
   room.log.push({ id: newId('log'), ts: Date.now(), text });
   if (room.log.length > LOG_MAX) room.log.shift();
 }
