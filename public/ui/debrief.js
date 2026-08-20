@@ -10,7 +10,7 @@ export function render(root, ctx) {
     <div class="screen">
       <div class="brand">
         <h1>Débriefing</h1>
-        <p>Le repas est sauvé. Voici le tableau d'honneur.</p>
+        <p>L'événement est sauvé. Voici le tableau d'honneur.</p>
       </div>
 
       ${room.name ? `<p class="operation-name">« ${esc(room.name)} »</p>` : ''}

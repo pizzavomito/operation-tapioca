@@ -10,7 +10,7 @@ export function render(root, ctx) {
     <div class="screen">
       <div class="brand">
         <h1>Salon</h1>
-        <p>On attend tout le monde. Le repas peut commencer dès que l'équipe est là.</p>
+        <p>On attend tout le monde. L'opération peut commencer dès que l'équipe est là.</p>
       </div>
 
       ${room.name ? `<p class="operation-name">« ${esc(room.name)} »</p>` : ''}
@@ -53,7 +53,7 @@ export function render(root, ctx) {
           <h3>Réglages</h3>
           <div class="field">
             <label for="op-name">Nom de l'opération (facultatif)</label>
-            <input id="op-name" type="text" maxlength="60" placeholder="ex : Repas de Noël" value="${esc(room.name || '')}" />
+            <input id="op-name" type="text" maxlength="60" placeholder="ex : Pot de départ de Julie" value="${esc(room.name || '')}" />
           </div>
           <div class="row">
             <span class="small muted">Missions en file</span>
@@ -84,6 +84,8 @@ export function render(root, ctx) {
       ` : `
         <p class="muted center">En attente que l'hôte lance l'opération…</p>
       `}
+
+      <button class="btn btn-ghost btn-block" id="leave-lobby">Quitter le salon</button>
     </div>
   `);
 
@@ -105,6 +107,10 @@ export function render(root, ctx) {
     });
     el.querySelector('#start').addEventListener('click', () => ctx.actions.start());
   }
+
+  // Rien n'est encore en jeu à ce stade (pas de score, pas de mission) : pas besoin de la
+  // confirmation en deux temps utilisée ailleurs pour quitter en cours de partie.
+  el.querySelector('#leave-lobby').addEventListener('click', () => ctx.actions.leave());
 
   root.replaceChildren(el);
 }

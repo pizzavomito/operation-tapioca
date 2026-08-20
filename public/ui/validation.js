@@ -56,7 +56,7 @@ export function renderSosRespond(ctx, sos) {
           <button class="btn" id="diversion">Diversion</button>
           <button class="btn btn-danger" id="extraction">Extraction</button>
         </div>
-        <p class="overlay-queue-hint">Diversion : tu détournes la table. Extraction : tu le/la sors dehors.</p>
+        <p class="overlay-queue-hint">Diversion : tu détournes l'attention du groupe. Extraction : tu le/la sors dehors.</p>
         <button class="btn btn-ghost btn-block" id="later">Pas maintenant</button>
       </div>
     </div>

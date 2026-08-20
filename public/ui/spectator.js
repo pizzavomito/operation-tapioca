@@ -13,7 +13,7 @@ export function render(root, ctx) {
     <div class="screen" style="gap:16px;">
       <div class="brand">
         <h1>Tu suis l'opération</h1>
-        <p>Aucune mission pour toi — juste de quoi encourager la table.</p>
+        <p>Aucune mission pour toi — juste de quoi encourager l'équipe.</p>
       </div>
 
       <div class="card">
@@ -31,7 +31,7 @@ export function render(root, ctx) {
       </div>
 
       <div class="card">
-        <h3 style="margin-bottom:10px;">Énergie de la tablée</h3>
+        <h3 style="margin-bottom:10px;">Énergie de l'équipe</h3>
         <div class="gauges">
           ${players.filter((p) => !p.isSpectator).map((p) => `
             <div class="gauge ${p.energy < 25 ? 'low' : ''}">

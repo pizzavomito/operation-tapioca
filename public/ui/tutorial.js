@@ -8,7 +8,7 @@ const STEPS = [
   {
     emoji: '🕵️',
     title: 'Le principe',
-    text: "Chaque joueur est un agent avec des missions secrètes. Réussir une mission demande de parler ; valider celle des autres demande d'écouter. Personne autour de la table ne doit se douter de rien.",
+    text: "Chaque joueur est un agent avec des missions secrètes. Réussir une mission demande de parler ; valider celle des autres demande d'écouter. Personne d'autre ne doit se douter de rien.",
   },
   {
     emoji: '🎯',
@@ -48,7 +48,7 @@ const STEPS = [
   {
     emoji: '👀',
     title: 'Mode spectateur',
-    text: "Pour ceux qui préfèrent juste suivre : pas de mission, mais les scores, l'ambiance de la table, et des encouragements à envoyer.",
+    text: "Pour ceux qui préfèrent juste suivre : pas de mission, mais les scores, l'ambiance du groupe, et des encouragements à envoyer.",
   },
   {
     emoji: '📖',

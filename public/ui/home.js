@@ -10,7 +10,7 @@ export function render(root, ctx) {
       <div class="brand">
         <div class="mark"></div>
         <h1>Opération Tapioca</h1>
-        <p>Un repas de famille. Une mission secrète. Personne ne doit rien voir.</p>
+        <p>Un événement entre vous. Une mission secrète. Personne ne doit rien voir.</p>
       </div>
 
       <div class="row" style="justify-content:center;">

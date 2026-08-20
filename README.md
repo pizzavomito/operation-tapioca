@@ -1,6 +1,6 @@
 # Opération Tapioca
 
-Jeu discret de missions conversationnelles pour repas de famille. Voir [PRD-operation-tapioca.md](PRD-operation-tapioca.md) pour la spec complète.
+Jeu discret de missions conversationnelles pour vos événements entre vous (repas de famille, pot de départ, séminaire...). Voir [PRD-operation-tapioca.md](PRD-operation-tapioca.md) pour la spec complète.
 
 ## Démarrer en local
 
@@ -113,4 +113,4 @@ node scripts/generate-icons.mjs
 
 MVP (§9 du PRD) : lobby + QR, missions, validation par témoin, tabous, baromètre, SOS, scoring, podium, PWA installable, reconnexion — tout implémenté. Testé de bout en bout via un scénario WebSocket automatisé (join, start, mission → validation, contamination, tabou auto-déclaré, énergie basse, SOS, reconnexion par token, débriefing).
 
-Reste à faire avant un vrai repas : test manuel sur téléphones réels (critères d'acceptation §10), déploiement OVH effectif.
+Reste à faire avant un vrai événement : test manuel sur téléphones réels (critères d'acceptation §10), déploiement OVH effectif.

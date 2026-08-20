@@ -6,9 +6,9 @@
 
 ## 1. Le pitch
 
-Un jeu discret, joué sur téléphone pendant un repas de famille, par les convives que ce type d'événement épuise. Chaque joueur est un « agent » qui reçoit des missions conversationnelles secrètes. Réussir une mission demande de parler ; valider celle des autres demande d'écouter. Le jeu transforme une contrainte sociale subie en activité pilotée.
+Un jeu discret, joué sur téléphone pendant un événement social (repas de famille, pot de départ, séminaire, réunion...), par les participants que ce type de moment épuise. Chaque joueur est un « agent » qui reçoit des missions conversationnelles secrètes. Réussir une mission demande de parler ; valider celle des autres demande d'écouter. Le jeu transforme une contrainte sociale subie en activité pilotée.
 
-**Objectif produit :** rendre le repas *traversable*, et accessoirement plus vivant pour tout le monde — y compris les non-joueurs.
+**Objectif produit :** rendre le moment *traversable*, et accessoirement plus vivant pour tout le monde — y compris les non-joueurs.
 
 ## 2. Principe non négociable
 
@@ -30,7 +30,7 @@ Corollaires appliqués au design :
 | Agent introverti | Doser son énergie ; pouvoir sortir sans se justifier | Baromètre + SOS Batterie |
 | Non-joueur | Ne rien remarquer | Écran sombre, zéro son, usage au pouce sous la table |
 
-**Taille de partie :** 2 à 8 agents. Durée : 1 à 4 h (un repas).
+**Taille de partie :** 2 à 8 agents. Durée : 1 à 4 h.
 
 ## 4. Boucles de jeu
 
@@ -71,7 +71,7 @@ Curseur 0–100 en permanence sur l'écran d'accueil, mis à jour en temps réel
 Le bouton le plus important du produit. Appui long (1,5 s) → tous les agents sont alertés.
 
 Un agent répond **« Je m'en occupe »** et choisit :
-- **Diversion** — il lance un sujet pour détourner l'attention de la table.
+- **Diversion** — il lance un sujet pour détourner l'attention du groupe.
 - **Extraction** — il rejoint le demandeur dehors sous un prétexte (« je vais chercher le pain »).
 
 L'intervenant gagne **+15 pts**, le score le plus élevé du jeu. Le barème dit ce que le produit valorise : s'occuper des autres rapporte plus que briller.

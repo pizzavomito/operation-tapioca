@@ -479,7 +479,7 @@ export function sosTake(room, responder, sosId, mode, broadcast) {
 export function sendCheer(room, spectator, emoji, broadcast) {
   if (!spectator.isSpectator) return { error: 'Seul un spectateur peut envoyer un encouragement.' };
   if (!CHEER_EMOJIS.includes(emoji)) return { error: 'Encouragement invalide.' };
-  logEvent(room, `${emoji} ${spectator.name} envoie ${emoji} à toute la table.`);
+  logEvent(room, `${emoji} ${spectator.name} envoie ${emoji} à tout le monde.`);
   broadcast(room, (targetId) =>
     targetId === spectator.id ? null : { type: S2C.NOTIFY, payload: { kind: 'cheer', name: spectator.name, emoji } }
   );

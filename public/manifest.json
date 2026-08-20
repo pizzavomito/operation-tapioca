@@ -1,7 +1,7 @@
 {
   "name": "Opération Tapioca",
   "short_name": "Tapioca",
-  "description": "Missions conversationnelles secrètes pour repas de famille.",
+  "description": "Missions conversationnelles secrètes pour vos événements entre vous.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

@@ -46,17 +46,17 @@
   { "id": "m045", "level": "audacieux", "text": "Propose de deviner le prochain film que quelqu'un ira voir, argumente, laisse la discussion durer.", "tags": ["conversation"] },
   { "id": "m046", "level": "audacieux", "text": "Interroge quelqu'un sur un projet qu'il n'a jamais terminé et pousse-le à expliquer pourquoi.", "tags": ["conversation"] },
   { "id": "m047", "level": "audacieux", "text": "Lance une conversation sur les regrets de vacances et relance avec au moins deux questions.", "tags": ["conversation"] },
-  { "id": "m048", "level": "audacieux", "text": "Demande à la tablée quel super-héros décrit le mieux chacun ici, fais durer l'échange.", "tags": ["conversation"] },
+  { "id": "m048", "level": "audacieux", "text": "Demande à tout le monde quel super-héros décrit le mieux chacun ici, fais durer l'échange.", "tags": ["conversation"] },
   { "id": "m049", "level": "audacieux", "text": "Raconte un mensonge que tu racontais enfant, demande celui des autres, puis relance.", "tags": ["conversation"] },
   { "id": "m050", "level": "audacieux", "text": "Propose un débat sur le meilleur moment de la journée et défends ton avis pendant trois répliques.", "tags": ["conversation"] },
   { "id": "m051", "level": "audacieux", "text": "Demande à quelqu'un quelle chanson le représente, et insiste pour un exemple concret.", "tags": ["conversation"] },
   { "id": "m052", "level": "audacieux", "text": "Lance un sujet sur les habitudes bizarres et relance avec au moins deux questions curieuses.", "tags": ["conversation"] },
   { "id": "m053", "level": "audacieux", "text": "Demande à quelqu'un son pire souvenir de transport et pousse pour les détails.", "tags": ["conversation"] },
-  { "id": "m054", "level": "audacieux", "text": "Propose de classer les desserts sur la table et défends ton classement pendant l'échange.", "tags": ["conversation"] },
+  { "id": "m054", "level": "audacieux", "text": "Propose de classer les meilleures excuses pour arriver en retard et défends ton classement pendant l'échange.", "tags": ["conversation"] },
   { "id": "m055", "level": "audacieux", "text": "Raconte ta pire décision vestimentaire et invite les autres à partager la leur, relance deux fois.", "tags": ["conversation"] },
   { "id": "m056", "level": "audacieux", "text": "Demande à quelqu'un ce qu'il changerait dans sa maison et creuse la réponse.", "tags": ["conversation"] },
   { "id": "m057", "level": "audacieux", "text": "Lance un sujet sur les peurs irrationnelles et relance avec deux questions sur leur origine.", "tags": ["conversation"] },
-  { "id": "m058", "level": "audacieux", "text": "Propose de deviner l'âge d'un objet sur la table, engage la discussion, relance.", "tags": ["conversation"] },
+  { "id": "m058", "level": "audacieux", "text": "Propose de deviner l'âge d'un objet dans la pièce, engage la discussion, relance.", "tags": ["conversation"] },
   { "id": "m059", "level": "audacieux", "text": "Demande à quelqu'un quel serait son métier dans une autre vie et pousse pour les détails.", "tags": ["conversation"] },
-  { "id": "m060", "level": "audacieux", "text": "Raconte un rêve récent et demande à la tablée de l'interpréter, relance deux fois.", "tags": ["conversation"] }
+  { "id": "m060", "level": "audacieux", "text": "Raconte un rêve récent et demande à tout le monde de l'interpréter, relance deux fois.", "tags": ["conversation"] }
 ]
