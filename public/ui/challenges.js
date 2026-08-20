@@ -15,7 +15,9 @@ export function render(root, ctx) {
   const directWait = Math.max(0, (me.nextChallengeAt || 0) - now);
   const openWait = Math.max(0, (me.nextOpenChallengeAt || 0) - now);
   const myOpenChallenge = openChallenges.find((o) => o.fromId === me.id);
-  const othersOpenChallenges = openChallenges.filter((o) => o.fromId !== me.id);
+  // Une fois tranché (status 'awarded'), plus personne d'autre ne répond — seul le lanceur
+  // garde la main pour changer d'avis (droit à l'erreur, voir sa propre carte plus bas).
+  const othersOpenChallenges = openChallenges.filter((o) => o.fromId !== me.id && o.status === 'pending');
   const myLaunched = me.myLaunchedChallenge || null;
   // Tant que j'ai un défi direct en cours (à faire accepter ou à valider), pas de nouveau
   // formulaire d'envoi : un seul à la fois, comme pour le défi ouvert.
@@ -82,7 +84,7 @@ export function render(root, ctx) {
         <div class="card stack">
           <h3>Ton défi ouvert</h3>
           <p class="mission-text">${esc(myOpenChallenge.text)}</p>
-          <p class="muted small">Réponses reçues — désigne qui a trouvé.</p>
+          <p class="muted small">${myOpenChallenge.status === 'awarded' ? "Déjà tranché — tu peux encore changer d'avis." : 'Réponses reçues — désigne qui a trouvé.'}</p>
           <div class="history-list">
             ${myOpenChallenge.respondents.map((r) => `
               <div class="history-row">
@@ -90,11 +92,11 @@ export function render(root, ctx) {
                   <div>${esc(r.name)}</div>
                   <div class="muted small">${r.status === 'received' ? `« ${esc(r.text)} »` : 'En attente…'}</div>
                 </div>
-                <button class="btn" data-winner="${esc(r.id)}">A trouvé</button>
+                <button class="btn ${myOpenChallenge.awardedTo === r.id ? 'btn-success' : ''}" data-winner="${esc(r.id)}">${myOpenChallenge.awardedTo === r.id ? 'Retenu ✓' : 'A trouvé'}</button>
               </div>
             `).join('')}
           </div>
-          <button class="btn btn-ghost btn-block" id="challenge-no-winner">Personne n'a trouvé</button>
+          <button class="btn btn-ghost btn-block ${myOpenChallenge.status === 'awarded' && myOpenChallenge.awardedTo === null ? 'btn-success' : ''}" id="challenge-no-winner">${myOpenChallenge.status === 'awarded' && myOpenChallenge.awardedTo === null ? 'Retenu ✓ — personne n\'a trouvé' : "Personne n'a trouvé"}</button>
         </div>
       ` : ''}
 

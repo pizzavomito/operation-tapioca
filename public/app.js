@@ -333,7 +333,11 @@ function renderStatusStrip() {
     || (inProgress(serverState.me.myLaunchedChallenge) ? serverState.me.myLaunchedChallenge : null);
   // Défis ouverts : visibles depuis n'importe quel onglet dès qu'il y en a un en cours, que ce
   // soit le mien (à désigner) ou celui d'un autre agent (à qui répondre).
-  const activeOpenChallenges = (serverState.openChallenges || []).length;
+  // Une fois tranché (status 'awarded'), seul le lanceur garde une action possible (changer
+  // d'avis) — ça ne concerne plus les autres agents, pas la peine de garder la pastille pour eux.
+  const activeOpenChallenges = (serverState.openChallenges || []).filter(
+    (o) => o.fromId === serverState.me.id || o.status === 'pending'
+  ).length;
   if (!witnessCount && !sos && !activeDirectChallenge && !activeOpenChallenges) return;
 
   const pills = [];

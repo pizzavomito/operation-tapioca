@@ -619,7 +619,7 @@ export function validateChallenge(room, launcher, challengeId, broadcast) {
   const launcherPts = challenge.level === 'corse' ? SCORE.CHALLENGE_CORSE_LAUNCHER : SCORE.CHALLENGE_LEGER_LAUNCHER;
   if (target) target.score += targetPts;
   launcher.score += launcherPts;
-  logEvent(room, `🎲 ${target ? target.name : '?'} a relevé le défi de ${launcher.name} : « ${challenge.text} »`);
+  logEvent(room, `🎲 ${target ? target.name : '?'} a relevé le défi de ${launcher.name} (+${targetPts} points, +${launcherPts} pour ${launcher.name}) : « ${challenge.text} »`);
 
   room.challenges.delete(challengeId);
   broadcast(room, (tid) =>
@@ -657,6 +657,7 @@ export function sendOpenChallenge(room, launcher, cardId, content, broadcast) {
     createdAt: Date.now(),
     timer,
     answers: new Map(), // playerId -> { text, submittedAt } — réponses écrites, visibles du lanceur seul
+    awardedTo: null, // playerId du gagnant actuellement désigné, ou null — voir awardOpenChallenge
   });
 
   logEvent(room, `🏆 ${launcher.name} lance un défi ouvert : « ${card.text} »`);
@@ -671,7 +672,7 @@ export function sendOpenChallenge(room, launcher, cardId, content, broadcast) {
 // (voir serializeStateFor) — pas le contenu, pour ne pas se souffler la réponse entre eux.
 export function answerOpenChallenge(room, player, openChallengeId, text, broadcast) {
   const challenge = room.openChallenges.get(openChallengeId);
-  if (!challenge || challenge.status !== 'pending') return { error: "Ce défi n'est plus disponible." };
+  if (!challenge || challenge.status !== 'pending') return { error: 'Le lanceur a déjà tranché ce défi.' };
   if (player.isSpectator) return { error: 'Un spectateur ne peut pas répondre à un défi.' };
   if (challenge.fromId === player.id) return { error: 'Tu ne peux pas répondre à ton propre défi.' };
   const trimmed = (text || '').trim().slice(0, OPEN_CHALLENGE_ANSWER_MAX_LENGTH);
@@ -682,18 +683,36 @@ export function answerOpenChallenge(room, player, openChallengeId, text, broadca
   return {};
 }
 
+// Droit à l'erreur (§ demande) : le lanceur peut redésigner le gagnant tant que le défi n'a pas
+// expiré (timer posé au lancement, cf. sendOpenChallenge) — pas de suppression au premier clic.
+// On annule d'abord les points du choix précédent avant d'appliquer le nouveau, pour ne jamais
+// cumuler deux attributions. Le statut passe à 'awarded' : plus personne d'autre ne peut
+// répondre à partir de là (voir answerOpenChallenge), mais le lanceur, lui, garde la main.
 export function awardOpenChallenge(room, launcher, openChallengeId, winnerId, broadcast) {
   const challenge = room.openChallenges.get(openChallengeId);
-  if (!challenge || challenge.status !== 'pending') return { error: "Ce défi n'est plus disponible." };
+  if (!challenge) return { error: "Ce défi n'est plus disponible." };
   if (challenge.fromId !== launcher.id) return { error: "Seul l'agent qui a lancé ce défi peut désigner le gagnant." };
-  clearTimeout(challenge.timer);
-  room.openChallenges.delete(openChallengeId);
 
-  const winner = winnerId ? room.players.get(winnerId) : null;
+  const newWinnerId = winnerId || null;
+  if (challenge.status === 'awarded' && challenge.awardedTo === newWinnerId) return {}; // rien n'a changé
+
+  if (challenge.status === 'awarded') {
+    const prevWinner = challenge.awardedTo ? room.players.get(challenge.awardedTo) : null;
+    if (prevWinner && prevWinner.id !== launcher.id) {
+      prevWinner.score -= SCORE.OPEN_CHALLENGE_WINNER;
+      launcher.score -= SCORE.OPEN_CHALLENGE_LAUNCHER;
+    }
+  }
+
+  const winner = newWinnerId ? room.players.get(newWinnerId) : null;
+  challenge.status = 'awarded';
+  challenge.awardedTo = winner ? winner.id : null;
   if (winner && winner.id !== launcher.id) {
     winner.score += SCORE.OPEN_CHALLENGE_WINNER;
     launcher.score += SCORE.OPEN_CHALLENGE_LAUNCHER;
-    logEvent(room, `🏆 ${winner.name} remporte le défi ouvert de ${launcher.name} !`);
+    logEvent(room, `🏆 ${winner.name} remporte le défi ouvert de ${launcher.name} (+${SCORE.OPEN_CHALLENGE_WINNER} points, +${SCORE.OPEN_CHALLENGE_LAUNCHER} pour ${launcher.name}) : « ${challenge.text} »`);
+  } else {
+    logEvent(room, `🏆 Défi ouvert de ${launcher.name} : personne n'a trouvé « ${challenge.text} ».`);
   }
   broadcast(room, (tid) =>
     winner && tid === winner.id
@@ -706,7 +725,9 @@ export function awardOpenChallenge(room, launcher, openChallengeId, winnerId, br
 function expireOpenChallenge(room, openChallengeId, broadcast) {
   const challenge = room.openChallenges.get(openChallengeId);
   if (!challenge) return;
-  room.openChallenges.delete(openChallengeId); // personne n'a tranché à temps : on ferme sans bruit
+  // Si déjà tranché (status 'awarded'), les points de la dernière désignation restent acquis —
+  // ce timer ne fait que clore l'écran, il ne touche jamais au score.
+  room.openChallenges.delete(openChallengeId);
   broadcast(room, () => null);
 }
 
@@ -812,8 +833,10 @@ export function serializeStateFor(room, playerId) {
     : null;
   const openChallenges = self?.isSpectator
     ? []
+    // 'awarded' reste inclus : le lanceur garde la main pour redésigner (droit à l'erreur, voir
+    // awardOpenChallenge) jusqu'à l'expiration naturelle du défi, pas seulement au premier clic.
     : [...room.openChallenges.values()]
-        .filter((c) => c.status === 'pending')
+        .filter((c) => c.status === 'pending' || c.status === 'awarded')
         .map((c) => {
           // Qui peut répondre : tout agent sauf le lanceur lui-même. Le texte des réponses n'est
           // révélé qu'au lanceur (qui doit juger) ; les autres ne voient qu'un statut reçu/en
@@ -825,7 +848,9 @@ export function serializeStateFor(room, playerId) {
             fromId: c.fromId,
             fromName: room.players.get(c.fromId)?.name,
             text: c.text,
+            status: c.status,
             myAnswer: c.answers.get(playerId)?.text ?? null,
+            awardedTo: isLauncher && c.status === 'awarded' ? c.awardedTo : undefined, // id du gagnant actuel, ou null si "personne"
             respondents: eligible.map((p) => ({
               id: p.id,
               name: p.name,
