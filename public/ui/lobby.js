@@ -64,6 +64,10 @@ export function render(root, ctx) {
               <button class="btn" data-q="1" style="min-height:40px;padding:8px 14px;">+</button>
             </div>
           </div>
+          <label class="row checkbox-row">
+            <input type="checkbox" id="challenges-toggle" ${room.settings.challengesEnabled ? 'checked' : ''} />
+            <span>Activer les défis (moments visibles entre agents, en plus des missions discrètes)</span>
+          </label>
           <div class="field">
             <label for="taboo-text">Ajouter un tabou perso (formule, pas une personne)</label>
             <div class="row">
@@ -98,6 +102,9 @@ export function render(root, ctx) {
         const next = room.settings.missionQueueMax + Number(btn.dataset.q);
         ctx.actions.updateSettings({ missionQueueMax: Math.max(1, Math.min(3, next)) });
       });
+    });
+    el.querySelector('#challenges-toggle').addEventListener('change', (e) => {
+      ctx.actions.updateSettings({ challengesEnabled: e.target.checked });
     });
     el.querySelector('#taboo-add').addEventListener('click', () => {
       const input = el.querySelector('#taboo-text');

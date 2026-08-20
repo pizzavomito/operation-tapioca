@@ -3,14 +3,20 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { newId, shuffle } from './rooms.js';
-import { S2C, SCORE, WITNESS_WINDOW_MS, ENERGY_LOW_THRESHOLD, CHEER_EMOJIS, CHAT_MAX_LENGTH, CHAT_MAX_HISTORY } from './protocol.js';
+import {
+  S2C, SCORE, WITNESS_WINDOW_MS, ENERGY_LOW_THRESHOLD, CHEER_EMOJIS, CHAT_MAX_LENGTH, CHAT_MAX_HISTORY,
+  CHALLENGE_COOLDOWN_MS, CHALLENGE_ACCEPT_WINDOW_MS, CHALLENGE_COMPLETE_WINDOW_MS,
+  OPEN_CHALLENGE_COOLDOWN_MS, OPEN_CHALLENGE_WINDOW_MS,
+} from './protocol.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export function loadContent() {
   const missions = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'missions.json'), 'utf8'));
   const taboos = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'taboos.json'), 'utf8'));
-  return { missions, taboos };
+  const challenges = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'challenges.json'), 'utf8'));
+  const openChallenges = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'open-challenges.json'), 'utf8'));
+  return { missions, taboos, challenges, openChallenges };
 }
 
 export function createPlayer({ id, token, name, isHost, isSpectator }) {
@@ -34,6 +40,8 @@ export function createPlayer({ id, token, name, isHost, isSpectator }) {
     contaminations: 0,
     pushSubscription: null, // abonnement Web Push, voir server/push.js
     visible: true, // Page Visibility API côté client : false = page en arrière-plan
+    lastChallengeAt: 0, // pour le cooldown des défis directs lancés
+    lastOpenChallengeAt: 0, // pour le cooldown des défis ouverts lancés
   };
 }
 
@@ -122,6 +130,9 @@ export function updateSettings(room, patch) {
   }
   if (patch.name != null) {
     room.name = String(patch.name).trim().slice(0, 60);
+  }
+  if (patch.challengesEnabled != null) {
+    room.settings.challengesEnabled = !!patch.challengesEnabled;
   }
   return {};
 }
@@ -500,6 +511,162 @@ export function sendChatMessage(room, player, text, broadcast) {
   return {};
 }
 
+// ---------- Défis (§ demande : moments visibles et partagés, en plus des missions discrètes) ----------
+//
+// Barème pensé pour que lancer un défi soit un choix, pas un réflexe : le lanceur ne touche
+// des points que si le défi aboutit. Il doit donc bien choisir — la bonne carte pour la
+// bonne personne — plutôt que spammer. Décliner reste toujours possible et silencieux,
+// aucune pénalité (même philosophie que le reste du jeu).
+
+function remainingCooldown(lastAt, cooldownMs) {
+  const remaining = (lastAt || 0) + cooldownMs - Date.now();
+  return remaining > 0 ? remaining : 0;
+}
+
+export function sendDirectChallenge(room, launcher, targetId, level, content, broadcast) {
+  if (!room.settings.challengesEnabled) return { error: 'Les défis sont désactivés pour cette opération.' };
+  if (launcher.isSpectator) return { error: 'Un spectateur ne peut pas lancer de défi.' };
+  if (level !== 'leger' && level !== 'corse') return { error: 'Niveau de défi invalide.' };
+  const target = room.players.get(targetId);
+  if (!target || target.isSpectator) return { error: 'Cible introuvable.' };
+  if (target.id === launcher.id) return { error: 'Tu ne peux pas te lancer un défi à toi-même.' };
+  const wait = remainingCooldown(launcher.lastChallengeAt, CHALLENGE_COOLDOWN_MS);
+  if (wait > 0) return { error: `Encore ${Math.ceil(wait / 60000)} min avant de pouvoir relancer un défi.` };
+
+  const deck = content.challenges.filter((c) => c.level === level);
+  const card = deck[Math.floor(Math.random() * deck.length)];
+  if (!card) return { error: 'Deck de défis vide.' };
+
+  launcher.lastChallengeAt = Date.now();
+  const challengeId = newId('chal');
+  const timer = setTimeout(() => expireChallenge(room, challengeId, broadcast), CHALLENGE_ACCEPT_WINDOW_MS);
+  room.challenges.set(challengeId, {
+    id: challengeId,
+    fromId: launcher.id,
+    targetId,
+    level,
+    text: card.text,
+    status: 'pending', // pending (à accepter) -> accepted (à faire) -> supprimé une fois résolu
+    createdAt: Date.now(),
+    timer,
+  });
+
+  broadcast(room, (tid) =>
+    tid === targetId
+      ? { type: S2C.CHALLENGE_REQUEST, payload: { challengeId, fromName: launcher.name, level, text: card.text } }
+      : null
+  );
+  return { challengeId };
+}
+
+export function respondChallenge(room, player, challengeId, accept, broadcast) {
+  const challenge = room.challenges.get(challengeId);
+  if (!challenge || challenge.status !== 'pending') return { error: "Ce défi n'est plus disponible." };
+  if (challenge.targetId !== player.id) return { error: 'Ce défi ne te concerne pas.' };
+  clearTimeout(challenge.timer);
+
+  if (!accept) {
+    room.challenges.delete(challengeId); // décliné : silencieux, aucune trace, aucune pénalité
+    broadcast(room, () => null);
+    return {};
+  }
+
+  challenge.status = 'accepted';
+  challenge.timer = setTimeout(() => expireChallenge(room, challengeId, broadcast), CHALLENGE_COMPLETE_WINDOW_MS);
+  broadcast(room, (tid) =>
+    tid === challenge.fromId
+      ? { type: S2C.NOTIFY, payload: { kind: 'challenge-accepted', name: player.name } }
+      : null
+  );
+  return {};
+}
+
+export function completeChallenge(room, player, challengeId, broadcast) {
+  const challenge = room.challenges.get(challengeId);
+  if (!challenge || challenge.status !== 'accepted') return { error: "Ce défi n'est plus disponible." };
+  if (challenge.targetId !== player.id) return { error: 'Ce défi ne te concerne pas.' };
+  clearTimeout(challenge.timer);
+
+  const launcher = room.players.get(challenge.fromId);
+  const targetPts = challenge.level === 'corse' ? SCORE.CHALLENGE_CORSE_TARGET : SCORE.CHALLENGE_LEGER_TARGET;
+  const launcherPts = challenge.level === 'corse' ? SCORE.CHALLENGE_CORSE_LAUNCHER : SCORE.CHALLENGE_LEGER_LAUNCHER;
+  player.score += targetPts;
+  if (launcher) launcher.score += launcherPts;
+  logEvent(room, `🎲 ${player.name} a relevé le défi de ${launcher ? launcher.name : '?'} : « ${challenge.text} »`);
+
+  room.challenges.delete(challengeId);
+  broadcast(room, (tid) =>
+    tid === challenge.fromId
+      ? { type: S2C.NOTIFY, payload: { kind: 'challenge-done', name: player.name } }
+      : null
+  );
+  return {};
+}
+
+function expireChallenge(room, challengeId, broadcast) {
+  const challenge = room.challenges.get(challengeId);
+  if (!challenge) return;
+  room.challenges.delete(challengeId); // ni pénalité ni trace, comme une mission expirée
+  broadcast(room, () => null);
+}
+
+export function sendOpenChallenge(room, launcher, content, broadcast) {
+  if (!room.settings.challengesEnabled) return { error: 'Les défis sont désactivés pour cette opération.' };
+  if (launcher.isSpectator) return { error: 'Un spectateur ne peut pas lancer de défi.' };
+  const wait = remainingCooldown(launcher.lastOpenChallengeAt, OPEN_CHALLENGE_COOLDOWN_MS);
+  if (wait > 0) return { error: `Encore ${Math.ceil(wait / 60000)} min avant de pouvoir relancer un défi ouvert.` };
+
+  const deck = content.openChallenges;
+  const card = deck[Math.floor(Math.random() * deck.length)];
+  if (!card) return { error: 'Deck de défis ouverts vide.' };
+
+  launcher.lastOpenChallengeAt = Date.now();
+  const openChallengeId = newId('ochal');
+  const timer = setTimeout(() => expireOpenChallenge(room, openChallengeId, broadcast), OPEN_CHALLENGE_WINDOW_MS);
+  room.openChallenges.set(openChallengeId, {
+    id: openChallengeId,
+    fromId: launcher.id,
+    text: card.text,
+    status: 'pending',
+    createdAt: Date.now(),
+    timer,
+  });
+
+  logEvent(room, `🏆 ${launcher.name} lance un défi ouvert : « ${card.text} »`);
+  broadcast(room, (tid) =>
+    tid === launcher.id ? null : { type: S2C.OPEN_CHALLENGE_ALERT, payload: { openChallengeId, fromName: launcher.name, text: card.text } }
+  );
+  return { openChallengeId };
+}
+
+export function awardOpenChallenge(room, launcher, openChallengeId, winnerId, broadcast) {
+  const challenge = room.openChallenges.get(openChallengeId);
+  if (!challenge || challenge.status !== 'pending') return { error: "Ce défi n'est plus disponible." };
+  if (challenge.fromId !== launcher.id) return { error: "Seul l'agent qui a lancé ce défi peut désigner le gagnant." };
+  clearTimeout(challenge.timer);
+  room.openChallenges.delete(openChallengeId);
+
+  const winner = winnerId ? room.players.get(winnerId) : null;
+  if (winner && winner.id !== launcher.id) {
+    winner.score += SCORE.OPEN_CHALLENGE_WINNER;
+    launcher.score += SCORE.OPEN_CHALLENGE_LAUNCHER;
+    logEvent(room, `🏆 ${winner.name} remporte le défi ouvert de ${launcher.name} !`);
+  }
+  broadcast(room, (tid) =>
+    winner && tid === winner.id
+      ? { type: S2C.NOTIFY, payload: { kind: 'open-challenge-won', fromName: launcher.name } }
+      : null
+  );
+  return {};
+}
+
+function expireOpenChallenge(room, openChallengeId, broadcast) {
+  const challenge = room.openChallenges.get(openChallengeId);
+  if (!challenge) return;
+  room.openChallenges.delete(openChallengeId); // personne n'a tranché à temps : on ferme sans bruit
+  broadcast(room, () => null);
+}
+
 // ---------- Débriefing ----------
 
 export function endGame(room) {
@@ -569,6 +736,28 @@ export function serializeStateFor(room, playerId) {
     .filter((c) => c.status === 'pending' && c.playerId === playerId)
     .map((c) => ({ claimId: c.id, kind: c.kind, missionId: c.missionId }));
 
+  // Défis : un spectateur ne lance ni ne reçoit rien — pur observateur, même principe que
+  // pour les demandes de témoin.
+  const myChallengeRaw = self?.isSpectator
+    ? null
+    : [...room.challenges.values()].find((c) => c.targetId === playerId && (c.status === 'pending' || c.status === 'accepted'));
+  // Jamais l'objet interne tel quel (il porte un timer, non sérialisable) : juste ce que le client affiche.
+  const myChallenge = myChallengeRaw
+    ? {
+        id: myChallengeRaw.id,
+        fromId: myChallengeRaw.fromId,
+        fromName: room.players.get(myChallengeRaw.fromId)?.name,
+        level: myChallengeRaw.level,
+        text: myChallengeRaw.text,
+        status: myChallengeRaw.status,
+      }
+    : null;
+  const openChallenges = self?.isSpectator
+    ? []
+    : [...room.openChallenges.values()]
+        .filter((c) => c.status === 'pending')
+        .map((c) => ({ id: c.id, fromId: c.fromId, fromName: room.players.get(c.fromId)?.name, text: c.text }));
+
   return {
     type: 'state',
     payload: {
@@ -598,6 +787,9 @@ export function serializeStateFor(room, playerId) {
             pendingClaims: myPendingClaims,
             sosHandled: self.sosHandled,
             contaminations: self.contaminations,
+            myChallenge: myChallenge || null,
+            nextChallengeAt: (self.lastChallengeAt || 0) + CHALLENGE_COOLDOWN_MS,
+            nextOpenChallengeAt: (self.lastOpenChallengeAt || 0) + OPEN_CHALLENGE_COOLDOWN_MS,
           }
         : null,
       players,
@@ -607,6 +799,7 @@ export function serializeStateFor(room, playerId) {
           : null,
       pendingWitnessRequests,
       myPendingTabooReports,
+      openChallenges,
       debrief: room.status === 'ended' ? room.debrief : null,
     },
   };

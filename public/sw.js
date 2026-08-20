@@ -1,6 +1,6 @@
 // Service worker : cache de la coquille applicative (§7.3 du PRD) + notifications push.
 // Les données de partie passent exclusivement par WebSocket, jamais par le cache.
-const CACHE_NAME = 'tapioca-shell-v11';
+const CACHE_NAME = 'tapioca-shell-v12';
 const SHELL_FILES = [
   '/',
   '/index.html',
@@ -13,6 +13,7 @@ const SHELL_FILES = [
   '/ui/lobby.js',
   '/ui/mission.js',
   '/ui/validation.js',
+  '/ui/challenges.js',
   '/ui/dossier.js',
   '/ui/spectator.js',
   '/ui/chat.js',

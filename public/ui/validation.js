@@ -46,6 +46,32 @@ export function renderTabooConfirm(ctx, report, tabooText) {
   return el;
 }
 
+export function renderChallengeRequest(ctx, challenge) {
+  const el = h(`
+    <div class="overlay">
+      <div class="overlay-card">
+        <div class="overlay-kicker">${esc(challenge.fromName)} te lance un défi — ${challenge.level === 'corse' ? 'Corsé' : 'Léger'}</div>
+        <p class="overlay-text">${esc(challenge.text)}</p>
+        <div class="overlay-actions">
+          <button class="btn" id="decline">Décliner</button>
+          <button class="btn btn-success" id="accept">Accepter</button>
+        </div>
+        <p class="overlay-queue-hint">Décliner ne coûte rien, personne ne le saura.</p>
+      </div>
+    </div>
+  `);
+  el.querySelector('#accept').addEventListener('click', () => {
+    vibrate(15);
+    ctx.actions.respondChallenge(challenge.challengeId, true);
+  });
+  el.querySelector('#decline').addEventListener('click', () => {
+    // Contrairement à "Pas entendu" sur un témoin, le serveur supprime vraiment le défi ici :
+    // pas besoin de fermeture locale, le prochain état confirmera que c'est réglé.
+    ctx.actions.respondChallenge(challenge.challengeId, false);
+  });
+  return el;
+}
+
 export function renderSosRespond(ctx, sos) {
   const el = h(`
     <div class="overlay sos-overlay">

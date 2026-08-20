@@ -27,6 +27,11 @@ export const C2S = {
   PUSH_SUBSCRIBE: 'push:subscribe', // { subscription } — objet PushSubscription.toJSON()
   VISIBILITY: 'visibility', // { visible: boolean } — Page Visibility API côté client
   CHAT_SEND: 'chat:send', // { text } — chat de partie, agents et spectateurs
+  CHALLENGE_SEND: 'challenge:send', // { targetId, level: 'leger'|'corse' } — carte tirée au hasard côté serveur
+  CHALLENGE_RESPOND: 'challenge:respond', // { challengeId, accept: boolean }
+  CHALLENGE_DONE: 'challenge:done', // { challengeId } — auto-déclaration, comme les tabous
+  OPEN_CHALLENGE_SEND: 'openChallenge:send', // {} — question tirée au hasard côté serveur
+  OPEN_CHALLENGE_AWARD: 'openChallenge:award', // { openChallengeId, winnerId: string|null }
 };
 
 // Serveur -> client
@@ -36,6 +41,8 @@ export const S2C = {
   WITNESS_REQUEST: 'witness:request',
   SOS_ALERT: 'sos:alert',
   CHAT_MESSAGE: 'chat:message',
+  CHALLENGE_REQUEST: 'challenge:request', // reçu par la cible : { challengeId, fromName, level, text }
+  OPEN_CHALLENGE_ALERT: 'openChallenge:alert', // reçu par tous sauf le lanceur : { openChallengeId, fromName, text }
   NOTIFY: 'notify',
   ERROR: 'error',
   PING: 'ping',
@@ -51,6 +58,14 @@ export const SCORE = {
   TABOO_REPORTED_CONFIRMED: -5,
   MISSION_EXPIRED: 0,
   ENERGY_RECHARGE_ON_VALIDATION: 5,
+  // Défis (§ demande) : le lanceur ne touche des points que si le défi aboutit — il doit
+  // bien choisir la bonne carte pour la bonne personne, pas juste spammer des demandes.
+  CHALLENGE_LEGER_TARGET: 8,
+  CHALLENGE_LEGER_LAUNCHER: 3,
+  CHALLENGE_CORSE_TARGET: 15,
+  CHALLENGE_CORSE_LAUNCHER: 5,
+  OPEN_CHALLENGE_WINNER: 20,
+  OPEN_CHALLENGE_LAUNCHER: 5,
 };
 
 // Encouragements du mode spectateur : ensemble fixe et rapide, en plus du chat texte.
@@ -63,3 +78,10 @@ export const SNAPSHOT_INTERVAL_MS = 30 * 1000;
 export const PING_INTERVAL_MS = 25 * 1000;
 export const CHAT_MAX_LENGTH = 500;
 export const CHAT_MAX_HISTORY = 200;
+
+// Défis : cooldowns individuels pour rester rares (§ demande, mode furtif) — pas de spam.
+export const CHALLENGE_COOLDOWN_MS = 10 * 60 * 1000; // 10 min entre deux défis directs lancés
+export const CHALLENGE_ACCEPT_WINDOW_MS = 5 * 60 * 1000; // fenêtre pour accepter/décliner
+export const CHALLENGE_COMPLETE_WINDOW_MS = 10 * 60 * 1000; // fenêtre pour le faire une fois accepté
+export const OPEN_CHALLENGE_COOLDOWN_MS = 15 * 60 * 1000; // 15 min entre deux défis ouverts lancés
+export const OPEN_CHALLENGE_WINDOW_MS = 5 * 60 * 1000; // fenêtre avant clôture automatique sans gagnant

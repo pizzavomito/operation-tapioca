@@ -570,6 +570,13 @@ body.chatbar-visible .toast {
   color: var(--danger);
 }
 
+/* ---------- Défis ---------- */
+.challenge-active {
+  border: 1px solid var(--accent);
+  background: var(--accent-soft);
+  gap: 12px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }

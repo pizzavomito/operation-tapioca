@@ -67,7 +67,7 @@ export class RoomStore {
       createdAt: Date.now(),
       hostId: hostPlayerId,
       status: 'lobby',
-      settings: { missionQueueMax: 1, witnessRequired: 1 },
+      settings: { missionQueueMax: 1, witnessRequired: 1, challengesEnabled: true },
       players: new Map(),
       tokenIndex: new Map(),
       missionPool: [],
@@ -75,6 +75,8 @@ export class RoomStore {
       customTaboos: [],
       claims: new Map(),
       tabooReports: new Map(),
+      challenges: new Map(), // défis directs, voir game.js#sendDirectChallenge
+      openChallenges: new Map(), // défis ouverts (course à tous), voir game.js#sendOpenChallenge
       sos: null,
       log: [], // fil d'événements de la partie, voir game.js#logEvent
       chat: [], // messages du chat de partie, agents et spectateurs
@@ -119,6 +121,8 @@ export class RoomStore {
         allMissions: [...room.allMissions.entries()],
         claims: [...room.claims.entries()].map(([id, c]) => [id, { ...c, timer: undefined }]),
         tabooReports: [...room.tabooReports.entries()],
+        challenges: [...room.challenges.entries()].map(([id, c]) => [id, { ...c, timer: undefined }]),
+        openChallenges: [...room.openChallenges.entries()].map(([id, c]) => [id, { ...c, timer: undefined }]),
       });
     }
     return { savedAt: Date.now(), rooms };
@@ -144,6 +148,11 @@ export class RoomStore {
           name: r.name || '',
           log: r.log || [],
           chat: r.chat || [],
+          settings: { missionQueueMax: 1, witnessRequired: 1, challengesEnabled: true, ...r.settings },
+          // Les défis sont trop éphémères (fenêtres de quelques minutes) pour valoir la peine
+          // d'être restaurés après un redémarrage — repartir à vide évite des états bloqués.
+          challenges: new Map(),
+          openChallenges: new Map(),
           players: new Map(
             r.players.map((p) => [
               p.id,
@@ -155,6 +164,8 @@ export class RoomStore {
                 reportsMade: p.reportsMade || [],
                 pushSubscription: p.pushSubscription || null,
                 visible: true,
+                lastChallengeAt: p.lastChallengeAt || 0,
+                lastOpenChallengeAt: p.lastOpenChallengeAt || 0,
               },
             ])
           ),

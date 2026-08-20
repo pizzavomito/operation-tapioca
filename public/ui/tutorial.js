@@ -46,6 +46,11 @@ const STEPS = [
     text: "Un chat discret entre agents (et spectateurs), avec des émotes rapides à un tap pour réagir sans ouvrir le clavier.",
   },
   {
+    emoji: '🎲',
+    title: 'Défis',
+    text: "Un onglet à part, si l'hôte l'a activé : lance un défi direct (léger ou corsé) à quelqu'un, ou un défi ouvert à tout le monde. Décliner ne coûte rien. Tu marques des points seulement si la personne relève le défi — de quoi donner envie de bien choisir sa cible.",
+  },
+  {
     emoji: '👀',
     title: 'Mode spectateur',
     text: "Pour ceux qui préfèrent juste suivre : pas de mission, mais les scores, l'ambiance du groupe, et des encouragements à envoyer.",

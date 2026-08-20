@@ -78,6 +78,18 @@ L'intervenant gagne **+15 pts**, le score le plus élevé du jeu. Le barème dit
 
 Le demandeur ne perd rien et n'a rien à justifier.
 
+### 4.6 Défis (optionnel, réglage hôte)
+
+Une couche à part, visible et ludique, en plus des missions discrètes — désactivable au Salon.
+
+Deux formats, tirés au hasard côté serveur dans un deck préétabli (respecte le principe non négociable du §2 : jamais dégradant, jamais ciblé de force) :
+- **Défi direct** — un agent en défie un autre, léger ou corsé (« touche quelque chose de rouge », « porte une casquette 2 minutes »). La cible peut décliner sans coût ni conséquence.
+- **Défi ouvert** — un agent lance une question à tout le monde (« combien de personnes portent des lunettes ? ») ; le premier arrivé gagne, le lanceur désigne lui-même le gagnant.
+
+Auto-déclaration à la fin, comme pour les tabous — pas de témoin requis.
+
+**Le lanceur ne gagne des points que si le défi aboutit** : c'est le levier de conception qui rend le mécanisme intéressant. Lancer un défi, c'est parier sur quelqu'un — un rôle de « marieur » plutôt qu'un moyen de scorer à ses propres frais. Cooldown par agent entre deux lancers (10 min en direct, 15 min en ouvert) pour éviter le spam.
+
 ## 5. Barème
 
 | Action | Points |
@@ -89,6 +101,9 @@ Le demandeur ne perd rien et n'a rien à justifier.
 | Tabou auto-déclaré | −3 (net) |
 | Tabou signalé et confirmé | −5 |
 | Mission expirée | 0 |
+| Défi direct relevé (léger) — cible / lanceur | +8 / +3 |
+| Défi direct relevé (corsé) — cible / lanceur | +15 / +5 |
+| Défi ouvert gagné — gagnant / lanceur | +20 / +5 |
 
 ## 6. Écrans
 

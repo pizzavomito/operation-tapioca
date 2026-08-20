@@ -25,6 +25,8 @@ tapioca/
 │  └─ data/
 │     ├─ missions.json
 │     ├─ taboos.json
+│     ├─ challenges.json       # cartes des défis directs (léger/corsé)
+│     ├─ open-challenges.json  # questions des défis ouverts
 │     └─ snapshot.json   # généré à l'exécution, ignoré par git
 ├─ public/              # coquille PWA (aucun build step)
 │  ├─ index.html, app.js, ws.js, style.css

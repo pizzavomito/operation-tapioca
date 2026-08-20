@@ -1,0 +1,16 @@
+[
+  { "id": "o01", "text": "Combien de personnes ici portent des lunettes ?" },
+  { "id": "o02", "text": "Combien de personnes ont une montre au poignet ?" },
+  { "id": "o03", "text": "Quelle est la couleur la plus portée dans la pièce en ce moment ?" },
+  { "id": "o04", "text": "Combien y a-t-il de chaises dans la pièce ?" },
+  { "id": "o05", "text": "Qui, ici, a les cheveux les plus longs ?" },
+  { "id": "o06", "text": "Combien de personnes ont un téléphone posé à portée de main ?" },
+  { "id": "o07", "text": "Quel est l'objet le plus vieux visible dans la pièce ?" },
+  { "id": "o08", "text": "Combien de fenêtres y a-t-il dans la pièce ?" },
+  { "id": "o09", "text": "Qui porte le plus de bijoux en ce moment ?" },
+  { "id": "o10", "text": "Combien de personnes portent du bleu ?" },
+  { "id": "o11", "text": "Quelle heure est-il, à la minute près, sans regarder son téléphone ?" },
+  { "id": "o12", "text": "Combien de plantes, vraies ou fausses, y a-t-il dans la pièce ?" },
+  { "id": "o13", "text": "Combien de personnes présentes ont les cheveux attachés ?" },
+  { "id": "o14", "text": "Quel est le point commun le plus improbable entre trois personnes ici ?" }
+]

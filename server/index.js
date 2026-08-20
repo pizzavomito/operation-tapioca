@@ -94,6 +94,10 @@ function maybeSendPush(player, extra) {
     notif = { title: 'On a besoin de toi', body: `${extra.payload.requesterName} réclame un témoin.`, tag: 'witness' };
   } else if (extra.type === S2C.CHAT_MESSAGE) {
     notif = { title: extra.payload.name, body: extra.payload.text, tag: 'chat' };
+  } else if (extra.type === S2C.CHALLENGE_REQUEST) {
+    notif = { title: 'Défi reçu 🎲', body: `${extra.payload.fromName} te lance un défi.`, tag: 'challenge' };
+  } else if (extra.type === S2C.OPEN_CHALLENGE_ALERT) {
+    notif = { title: 'Défi ouvert 🏆', body: extra.payload.text, tag: 'open-challenge' };
   }
   if (!notif) return;
   push.sendPush(player.pushSubscription, notif).then(({ gone }) => {
@@ -317,6 +321,38 @@ function handleAction(ws, room, player, type, payload) {
 
     case C2S.CHAT_SEND: {
       const res = game.sendChatMessage(room, player, payload.text, broadcast);
+      if (res.error) sendError(ws, res.error);
+      break;
+    }
+
+    case C2S.CHALLENGE_SEND: {
+      if (room.status !== 'playing') return sendError(ws, "L'opération n'est pas en cours.");
+      const res = game.sendDirectChallenge(room, player, payload.targetId, payload.level, content, broadcast);
+      if (res.error) sendError(ws, res.error);
+      break;
+    }
+
+    case C2S.CHALLENGE_RESPOND: {
+      const res = game.respondChallenge(room, player, payload.challengeId, !!payload.accept, broadcast);
+      if (res.error) sendError(ws, res.error);
+      break;
+    }
+
+    case C2S.CHALLENGE_DONE: {
+      const res = game.completeChallenge(room, player, payload.challengeId, broadcast);
+      if (res.error) sendError(ws, res.error);
+      break;
+    }
+
+    case C2S.OPEN_CHALLENGE_SEND: {
+      if (room.status !== 'playing') return sendError(ws, "L'opération n'est pas en cours.");
+      const res = game.sendOpenChallenge(room, player, content, broadcast);
+      if (res.error) sendError(ws, res.error);
+      break;
+    }
+
+    case C2S.OPEN_CHALLENGE_AWARD: {
+      const res = game.awardOpenChallenge(room, player, payload.openChallengeId, payload.winnerId || null, broadcast);
       if (res.error) sendError(ws, res.error);
       break;
     }

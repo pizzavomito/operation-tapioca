@@ -8,6 +8,7 @@ import * as Mission from './ui/mission.js';
 import * as Dossier from './ui/dossier.js';
 import * as Spectator from './ui/spectator.js';
 import * as Chat from './ui/chat.js';
+import * as Challenges from './ui/challenges.js';
 import * as Debrief from './ui/debrief.js';
 import * as History from './ui/history.js';
 import * as Tutorial from './ui/tutorial.js';
@@ -98,6 +99,11 @@ const actions = {
   sosTake: (sosId, mode) => socket.send(C2S.SOS_TAKE, { sosId, mode }),
   cheer: (emoji) => socket.send(C2S.CHEER, { emoji }),
   sendChat: (text) => socket.send(C2S.CHAT_SEND, { text }),
+  sendChallenge: (targetId, level) => socket.send(C2S.CHALLENGE_SEND, { targetId, level }),
+  respondChallenge: (challengeId, accept) => socket.send(C2S.CHALLENGE_RESPOND, { challengeId, accept }),
+  challengeDone: (challengeId) => socket.send(C2S.CHALLENGE_DONE, { challengeId }),
+  sendOpenChallenge: () => socket.send(C2S.OPEN_CHALLENGE_SEND, {}),
+  awardOpenChallenge: (openChallengeId, winnerId) => socket.send(C2S.OPEN_CHALLENGE_AWARD, { openChallengeId, winnerId }),
   gameEnd: () => socket.send(C2S.GAME_END, {}),
   leave: () => {
     // Départ volontaire : on prévient le serveur pour qu'il libère vraiment la place — sinon
@@ -176,6 +182,18 @@ function handleMessage(msg) {
       }
       break;
 
+    case S2C.CHALLENGE_REQUEST:
+      vibrate(25);
+      flashScreen('accent');
+      render(); // l'overlay se déduit de serverState.me.myChallenge au prochain state
+      break;
+
+    case S2C.OPEN_CHALLENGE_ALERT:
+      vibrate(20);
+      flashScreen('accent');
+      showToast(`🏆 ${payload.fromName} : ${payload.text}`.slice(0, 90));
+      break;
+
     case S2C.NOTIFY:
       handleNotify(payload);
       break;
@@ -240,6 +258,17 @@ function handleNotify(payload) {
       vibrate(15);
       showToast(`${payload.name} t'envoie ${payload.emoji}`);
       break;
+    case 'challenge-accepted':
+      showToast(`${payload.name} a accepté ton défi.`);
+      break;
+    case 'challenge-done':
+      vibrate(15);
+      showToast(`${payload.name} a relevé ton défi !`);
+      break;
+    case 'open-challenge-won':
+      vibrate([15, 40, 15]);
+      showToast(`Tu as gagné le défi de ${payload.fromName} !`);
+      break;
     default:
       break;
   }
@@ -256,6 +285,7 @@ function currentScreen() {
     if (serverState.me?.isSpectator) return 'spectator';
     if (ui.view === 'dossier') return 'dossier';
     if (ui.view === 'chat') return 'chat';
+    if (ui.view === 'challenges') return 'challenges';
     return 'mission';
   }
   if (status === 'ended') return 'debrief';
@@ -290,7 +320,8 @@ function renderStatusStrip() {
   if (!serverState || serverState.room.status !== 'playing') return;
   const witnessCount = (serverState.pendingWitnessRequests || []).length;
   const sos = serverState.sos && serverState.sos.raisedBy !== serverState.me.id ? serverState.sos : null;
-  if (!witnessCount && !sos) return;
+  const activeChallenge = serverState.me.myChallenge && serverState.me.myChallenge.status === 'accepted' ? serverState.me.myChallenge : null;
+  if (!witnessCount && !sos && !activeChallenge) return;
 
   const pills = [];
   if (witnessCount) {
@@ -299,9 +330,13 @@ function renderStatusStrip() {
   if (sos) {
     pills.push(`<button class="status-pill status-pill-urgent" data-reopen="sos">🆘 SOS — ${esc(sos.raisedByName)}</button>`);
   }
+  if (activeChallenge) {
+    pills.push(`<button class="status-pill" data-reopen="challenge">🎲 Défi en cours</button>`);
+  }
   const strip = h(`<div class="status-strip">${pills.join('')}</div>`);
   strip.querySelector('[data-reopen="witness"]')?.addEventListener('click', () => setUI({ dismissedClaimIds: new Set() }));
   strip.querySelector('[data-reopen="sos"]')?.addEventListener('click', () => setUI({ dismissedSosId: null }));
+  strip.querySelector('[data-reopen="challenge"]')?.addEventListener('click', () => setUI({ view: 'challenges' }));
   statusRoot.appendChild(strip);
 }
 
@@ -323,6 +358,7 @@ function renderScreen() {
   if (screen === 'mission') return Mission.render(screenRoot, ctx);
   if (screen === 'dossier') return Dossier.render(screenRoot, ctx);
   if (screen === 'chat') return Chat.render(screenRoot, ctx);
+  if (screen === 'challenges') return Challenges.render(screenRoot, ctx);
   if (screen === 'spectator') return Spectator.render(screenRoot, ctx);
   if (screen === 'debrief') return Debrief.render(screenRoot, ctx);
 }
@@ -347,6 +383,15 @@ function renderOverlay() {
   const visibleWitnessRequests = (pendingWitnessRequests || []).filter((r) => !ui.dismissedClaimIds.has(r.claimId));
   if (visibleWitnessRequests.length) {
     overlayRoot.appendChild(Validation.renderWitness(ctx, visibleWitnessRequests[0], visibleWitnessRequests.length));
+    return;
+  }
+  if (me?.myChallenge?.status === 'pending') {
+    overlayRoot.appendChild(Validation.renderChallengeRequest(ctx, {
+      challengeId: me.myChallenge.id,
+      fromName: me.myChallenge.fromName || '?',
+      level: me.myChallenge.level,
+      text: me.myChallenge.text,
+    }));
   }
 }
 
@@ -417,24 +462,35 @@ function renderTabBar() {
     if (tabBarEl) { tabBarEl.remove(); tabBarEl = null; }
     return;
   }
+  const challengesOn = !!serverState.room.settings?.challengesEnabled;
   if (!tabBarEl) {
     tabBarEl = h(`
       <div class="tab-bar">
         <button class="btn" id="tab-mission">Mission</button>
         <button class="btn" id="tab-dossier">Dossier</button>
         <button class="btn" id="tab-chat">Chat<span class="tab-badge" id="chat-badge" hidden></span></button>
+        ${challengesOn ? `<button class="btn" id="tab-challenges">Défis<span class="tab-badge" id="challenges-badge" hidden></span></button>` : ''}
       </div>
     `);
     tabBarEl.querySelector('#tab-mission').addEventListener('click', () => setUI({ view: 'mission' }));
     tabBarEl.querySelector('#tab-dossier').addEventListener('click', () => setUI({ view: 'dossier' }));
     tabBarEl.querySelector('#tab-chat').addEventListener('click', () => setUI({ view: 'chat' }));
+    tabBarEl.querySelector('#tab-challenges')?.addEventListener('click', () => setUI({ view: 'challenges' }));
     document.body.appendChild(tabBarEl);
   }
-  tabBarEl.querySelector('#tab-mission').classList.toggle('active', ui.view !== 'dossier' && ui.view !== 'chat');
+  const activeViews = ['dossier', 'chat', 'challenges'];
+  tabBarEl.querySelector('#tab-mission').classList.toggle('active', !activeViews.includes(ui.view));
   tabBarEl.querySelector('#tab-dossier').classList.toggle('active', ui.view === 'dossier');
   tabBarEl.querySelector('#tab-chat').classList.toggle('active', ui.view === 'chat');
   const unread = Math.max(0, (serverState.room.chat || []).length - (ui.chatSeenCount || 0));
   tabBarEl.querySelector('#chat-badge').hidden = ui.view === 'chat' || unread === 0;
+  const challengesTab = tabBarEl.querySelector('#tab-challenges');
+  if (challengesTab) {
+    challengesTab.classList.toggle('active', ui.view === 'challenges');
+    const hasChallengeToHandle = !!(serverState.me?.myChallenge?.status === 'accepted')
+      || (serverState.openChallenges || []).some((o) => o.fromId === serverState.me?.id);
+    tabBarEl.querySelector('#challenges-badge').hidden = ui.view === 'challenges' || !hasChallengeToHandle;
+  }
 }
 
 // Bande de saisie fixe, juste au-dessus de la barre d'onglets — comme le bouton SOS,
