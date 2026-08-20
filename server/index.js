@@ -25,6 +25,8 @@ app.get('/protocol.js', (req, res) => res.sendFile(path.join(__dirname, 'protoco
 app.get('/taboos.json', (req, res) => res.sendFile(path.join(__dirname, 'data', 'taboos.json')));
 // Le deck de défis directs est une connaissance commune : le lanceur choisit la carte à vue (§ demande).
 app.get('/challenges.json', (req, res) => res.sendFile(path.join(__dirname, 'data', 'challenges.json')));
+// Idem pour les défis ouverts : le lanceur choisit la question, plus de tirage au hasard (§ demande).
+app.get('/open-challenges.json', (req, res) => res.sendFile(path.join(__dirname, 'data', 'open-challenges.json')));
 // Clé publique VAPID pour l'abonnement Web Push côté client (notifications même app en arrière-plan).
 app.get('/push/vapid-public-key', (req, res) => res.type('text/plain').send(push.getPublicKey()));
 
@@ -354,7 +356,13 @@ function handleAction(ws, room, player, type, payload) {
 
     case C2S.OPEN_CHALLENGE_SEND: {
       if (room.status !== 'playing') return sendError(ws, "L'opération n'est pas en cours.");
-      const res = game.sendOpenChallenge(room, player, content, broadcast);
+      const res = game.sendOpenChallenge(room, player, payload.cardId, content, broadcast);
+      if (res.error) sendError(ws, res.error);
+      break;
+    }
+
+    case C2S.OPEN_CHALLENGE_ANSWER: {
+      const res = game.answerOpenChallenge(room, player, payload.openChallengeId, payload.text, broadcast);
       if (res.error) sendError(ws, res.error);
       break;
     }

@@ -31,7 +31,8 @@ export const C2S = {
   CHALLENGE_RESPOND: 'challenge:respond', // { challengeId, accept: boolean }
   CHALLENGE_CLAIM: 'challenge:claim', // { challengeId } — la cible signale avoir fini, prévient le lanceur
   CHALLENGE_VALIDATE: 'challenge:validate', // { challengeId } — le lanceur constate et valide, pas la cible
-  OPEN_CHALLENGE_SEND: 'openChallenge:send', // {} — question tirée au hasard côté serveur
+  OPEN_CHALLENGE_SEND: 'openChallenge:send', // { cardId } — question choisie par le lanceur dans le deck
+  OPEN_CHALLENGE_ANSWER: 'openChallenge:answer', // { openChallengeId, text } — soumet/modifie sa réponse écrite
   OPEN_CHALLENGE_AWARD: 'openChallenge:award', // { openChallengeId, winnerId: string|null }
 };
 
@@ -86,3 +87,4 @@ export const CHALLENGE_ACCEPT_WINDOW_MS = 5 * 60 * 1000; // fenêtre pour accept
 export const CHALLENGE_COMPLETE_WINDOW_MS = 10 * 60 * 1000; // fenêtre pour le faire une fois accepté
 export const OPEN_CHALLENGE_COOLDOWN_MS = 15 * 60 * 1000; // 15 min entre deux défis ouverts lancés
 export const OPEN_CHALLENGE_WINDOW_MS = 5 * 60 * 1000; // fenêtre avant clôture automatique sans gagnant
+export const OPEN_CHALLENGE_ANSWER_MAX_LENGTH = 200;

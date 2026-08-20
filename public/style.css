@@ -144,6 +144,20 @@ select {
 }
 select:focus { outline: 2px solid var(--accent); }
 
+textarea {
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  color: var(--text);
+  padding: 10px 14px;
+  font: inherit;
+  font-size: 1rem;
+  width: 100%;
+  min-height: 64px;
+  resize: vertical;
+}
+textarea:focus { outline: 2px solid var(--accent); }
+
 .stack { display: flex; flex-direction: column; gap: 12px; }
 .row { display: flex; align-items: center; gap: 10px; }
 .spacer { flex: 1; }

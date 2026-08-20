@@ -6,7 +6,7 @@ import { newId, shuffle } from './rooms.js';
 import {
   S2C, SCORE, WITNESS_WINDOW_MS, ENERGY_LOW_THRESHOLD, CHEER_EMOJIS, CHAT_MAX_LENGTH, CHAT_MAX_HISTORY,
   CHALLENGE_COOLDOWN_MS, CHALLENGE_ACCEPT_WINDOW_MS, CHALLENGE_COMPLETE_WINDOW_MS,
-  OPEN_CHALLENGE_COOLDOWN_MS, OPEN_CHALLENGE_WINDOW_MS,
+  OPEN_CHALLENGE_COOLDOWN_MS, OPEN_CHALLENGE_WINDOW_MS, OPEN_CHALLENGE_ANSWER_MAX_LENGTH,
 } from './protocol.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -637,15 +637,14 @@ function expireChallenge(room, challengeId, broadcast) {
   broadcast(room, () => null);
 }
 
-export function sendOpenChallenge(room, launcher, content, broadcast) {
+export function sendOpenChallenge(room, launcher, cardId, content, broadcast) {
   if (!room.settings.challengesEnabled) return { error: 'Les défis sont désactivés pour cette opération.' };
   if (launcher.isSpectator) return { error: 'Un spectateur ne peut pas lancer de défi.' };
   const wait = remainingCooldown(launcher.lastOpenChallengeAt, OPEN_CHALLENGE_COOLDOWN_MS);
   if (wait > 0) return { error: `Encore ${Math.ceil(wait / 60000)} min avant de pouvoir relancer un défi ouvert.` };
 
-  const deck = content.openChallenges;
-  const card = deck[Math.floor(Math.random() * deck.length)];
-  if (!card) return { error: 'Deck de défis ouverts vide.' };
+  const card = content.openChallenges.find((c) => c.id === cardId);
+  if (!card) return { error: 'Question de défi ouvert introuvable.' };
 
   launcher.lastOpenChallengeAt = Date.now();
   const openChallengeId = newId('ochal');
@@ -657,6 +656,7 @@ export function sendOpenChallenge(room, launcher, content, broadcast) {
     status: 'pending',
     createdAt: Date.now(),
     timer,
+    answers: new Map(), // playerId -> { text, submittedAt } — réponses écrites, visibles du lanceur seul
   });
 
   logEvent(room, `🏆 ${launcher.name} lance un défi ouvert : « ${card.text} »`);
@@ -664,6 +664,22 @@ export function sendOpenChallenge(room, launcher, content, broadcast) {
     tid === launcher.id ? null : { type: S2C.OPEN_CHALLENGE_ALERT, payload: { openChallengeId, fromName: launcher.name, text: card.text } }
   );
   return { openChallengeId };
+}
+
+// Réponse écrite dans la carte (§ demande) : remplace le seul "cri à l'oral" par une trace que
+// le lanceur peut relire pour juger. Les autres agents ne voient qu'un statut reçu/en attente
+// (voir serializeStateFor) — pas le contenu, pour ne pas se souffler la réponse entre eux.
+export function answerOpenChallenge(room, player, openChallengeId, text, broadcast) {
+  const challenge = room.openChallenges.get(openChallengeId);
+  if (!challenge || challenge.status !== 'pending') return { error: "Ce défi n'est plus disponible." };
+  if (player.isSpectator) return { error: 'Un spectateur ne peut pas répondre à un défi.' };
+  if (challenge.fromId === player.id) return { error: 'Tu ne peux pas répondre à ton propre défi.' };
+  const trimmed = (text || '').trim().slice(0, OPEN_CHALLENGE_ANSWER_MAX_LENGTH);
+  if (!trimmed) return { error: 'Réponse vide.' };
+
+  challenge.answers.set(player.id, { text: trimmed, submittedAt: Date.now() });
+  broadcast(room, () => null);
+  return {};
 }
 
 export function awardOpenChallenge(room, launcher, openChallengeId, winnerId, broadcast) {
@@ -798,7 +814,26 @@ export function serializeStateFor(room, playerId) {
     ? []
     : [...room.openChallenges.values()]
         .filter((c) => c.status === 'pending')
-        .map((c) => ({ id: c.id, fromId: c.fromId, fromName: room.players.get(c.fromId)?.name, text: c.text }));
+        .map((c) => {
+          // Qui peut répondre : tout agent sauf le lanceur lui-même. Le texte des réponses n'est
+          // révélé qu'au lanceur (qui doit juger) ; les autres ne voient qu'un statut reçu/en
+          // attente — pas de quoi se souffler la réponse entre agents.
+          const eligible = [...room.players.values()].filter((p) => !p.isSpectator && p.id !== c.fromId);
+          const isLauncher = c.fromId === playerId;
+          return {
+            id: c.id,
+            fromId: c.fromId,
+            fromName: room.players.get(c.fromId)?.name,
+            text: c.text,
+            myAnswer: c.answers.get(playerId)?.text ?? null,
+            respondents: eligible.map((p) => ({
+              id: p.id,
+              name: p.name,
+              status: c.answers.has(p.id) ? 'received' : 'pending',
+              text: isLauncher ? (c.answers.get(p.id)?.text ?? null) : null,
+            })),
+          };
+        });
 
   return {
     type: 'state',

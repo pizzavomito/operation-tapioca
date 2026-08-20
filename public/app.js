@@ -35,6 +35,7 @@ let session = loadSession();
 let serverState = null; // dernier payload de 'state'
 let genericTaboos = [];
 let challengeDeck = []; // deck de défis directs (§ demande : le lanceur choisit la carte à vue)
+let openChallengeDeck = []; // deck de défis ouverts, même principe
 let connectionStatus = 'connecting';
 let toastTimer = null;
 
@@ -104,7 +105,8 @@ const actions = {
   respondChallenge: (challengeId, accept) => socket.send(C2S.CHALLENGE_RESPOND, { challengeId, accept }),
   claimChallenge: (challengeId) => socket.send(C2S.CHALLENGE_CLAIM, { challengeId }),
   validateChallenge: (challengeId) => socket.send(C2S.CHALLENGE_VALIDATE, { challengeId }),
-  sendOpenChallenge: () => socket.send(C2S.OPEN_CHALLENGE_SEND, {}),
+  sendOpenChallenge: (cardId) => socket.send(C2S.OPEN_CHALLENGE_SEND, { cardId }),
+  answerOpenChallenge: (openChallengeId, text) => socket.send(C2S.OPEN_CHALLENGE_ANSWER, { openChallengeId, text }),
   awardOpenChallenge: (openChallengeId, winnerId) => socket.send(C2S.OPEN_CHALLENGE_AWARD, { openChallengeId, winnerId }),
   gameEnd: () => socket.send(C2S.GAME_END, {}),
   leave: () => {
@@ -299,7 +301,7 @@ function currentScreen() {
 }
 
 function buildCtx() {
-  return { server: serverState, ui, actions, setUI, genericTaboos, challengeDeck, dismissWitness, showToast };
+  return { server: serverState, ui, actions, setUI, genericTaboos, challengeDeck, openChallengeDeck, dismissWitness, showToast };
 }
 
 function render() {
@@ -594,6 +596,12 @@ async function boot() {
     challengeDeck = await res.json();
   } catch {
     challengeDeck = [];
+  }
+  try {
+    const res = await fetch('/open-challenges.json');
+    openChallengeDeck = await res.json();
+  } catch {
+    openChallengeDeck = [];
   }
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js').catch(() => {});
