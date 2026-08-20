@@ -1,5 +1,6 @@
 node_modules/
 server/data/snapshot.json
 server/data/vapid.json
+server/data/history/
 *.log
 .DS_Store

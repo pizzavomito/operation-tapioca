@@ -92,6 +92,8 @@ input {
   background: transparent;
 }
 .btn-block { width: 100%; }
+.history-row-btn { justify-content: space-between; text-align: left; }
+.history-row-main { display: flex; flex-direction: column; gap: 2px; align-items: flex-start; }
 .btn:disabled { opacity: 0.4; pointer-events: none; }
 
 .field {

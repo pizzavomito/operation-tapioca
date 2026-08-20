@@ -9,6 +9,7 @@ import * as Dossier from './ui/dossier.js';
 import * as Spectator from './ui/spectator.js';
 import * as Chat from './ui/chat.js';
 import * as Debrief from './ui/debrief.js';
+import * as History from './ui/history.js';
 import * as Validation from './ui/validation.js';
 
 const LS_SESSION = 'tapioca:session';
@@ -39,6 +40,8 @@ let ui = {
   homeCode: '',
   joinError: null,
   prefillCode: new URLSearchParams(location.search).get('code') || '',
+  showHistory: false, // écran Historique, accessible depuis l'accueil, indépendant d'une session de partie
+  historyDetailId: null,
   view: 'mission', // sous-écran quand la partie est en cours : mission | dossier
   dismissedSosId: null,
   dismissedClaimIds: new Set(), // "Pas entendu" : fermeture locale, le serveur ne fait rien exprès
@@ -239,6 +242,8 @@ function handleNotify(payload) {
 }
 
 function currentScreen() {
+  // Consultable depuis l'accueil, sans être dans une partie — indépendant de la session WS.
+  if (ui.showHistory) return ui.historyDetailId ? 'history-detail' : 'history';
   if (!session || !serverState) return 'loading';
   const status = serverState.room.status;
   if (status === 'lobby') return 'lobby';
@@ -298,6 +303,8 @@ function renderStatusStrip() {
 function renderScreen() {
   const screen = currentScreen();
   const ctx = buildCtx();
+  if (screen === 'history') return History.renderList(screenRoot, ctx);
+  if (screen === 'history-detail') return History.renderDetail(screenRoot, ctx);
   if (screen === 'home' || (screen === 'loading' && !session)) {
     Home.render(screenRoot, ctx);
     return;

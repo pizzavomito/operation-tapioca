@@ -9,6 +9,7 @@ import QRCode from 'qrcode';
 import { RoomStore, newId, newToken } from './rooms.js';
 import * as game from './game.js';
 import * as push from './push.js';
+import * as history from './history.js';
 import { C2S, S2C, SNAPSHOT_INTERVAL_MS, PING_INTERVAL_MS } from './protocol.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -24,6 +25,14 @@ app.get('/protocol.js', (req, res) => res.sendFile(path.join(__dirname, 'protoco
 app.get('/taboos.json', (req, res) => res.sendFile(path.join(__dirname, 'data', 'taboos.json')));
 // Clé publique VAPID pour l'abonnement Web Push côté client (notifications même app en arrière-plan).
 app.get('/push/vapid-public-key', (req, res) => res.type('text/plain').send(push.getPublicKey()));
+
+// Historique des parties terminées (§ demande : consulter une opération après coup).
+app.get('/api/history', (req, res) => res.json(history.listGames()));
+app.get('/api/history/:id', (req, res) => {
+  const record = history.loadGame(req.params.id);
+  if (!record) return res.status(404).json({ error: 'Partie introuvable.' });
+  res.json(record);
+});
 
 // QR code de la partie (écran Salon, §6) : encode l'URL de rejoin directe.
 app.get('/qr/:code.svg', async (req, res) => {
@@ -320,6 +329,7 @@ function handleAction(ws, room, player, type, payload) {
     case C2S.GAME_END: {
       if (!player.isHost) return sendError(ws, "Seul l'hôte peut clore l'opération.");
       room.debrief = game.endGame(room);
+      history.saveGameRecord(room); // archive permanente, consultable après coup (§ demande)
       broadcast(room, () => null);
       break;
     }

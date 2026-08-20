@@ -326,6 +326,7 @@ export function witnessVote(room, voter, claimId, vote, broadcast) {
         }
       : null
   );
+  room.claims.delete(claim.id); // résolue, plus besoin de la garder (§ fuite mémoire signalée)
   return {};
 }
 
@@ -351,6 +352,7 @@ function expireClaim(room, claimId, broadcast) {
       ? { type: S2C.NOTIFY, payload: { kind: 'expired', text: 'Personne n\'a validé à temps. Pas grave, nouvelle mission.' } }
       : null
   );
+  room.claims.delete(claimId); // résolue, plus besoin de la garder
 }
 
 // ---------- Tabous ----------
@@ -419,6 +421,7 @@ export function tabooConfirm(room, target, reportId, accept, broadcast) {
         }
       : null
   );
+  room.tabooReports.delete(reportId); // résolu ; le résultat vit déjà dans reportsMade/tabooIncidents
   return {};
 }
 
