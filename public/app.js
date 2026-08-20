@@ -10,9 +10,11 @@ import * as Spectator from './ui/spectator.js';
 import * as Chat from './ui/chat.js';
 import * as Debrief from './ui/debrief.js';
 import * as History from './ui/history.js';
+import * as Tutorial from './ui/tutorial.js';
 import * as Validation from './ui/validation.js';
 
 const LS_SESSION = 'tapioca:session';
+const LS_TUTORIAL_SEEN = 'tapioca:tutorialSeen';
 
 const appRoot = document.getElementById('app');
 const screenRoot = h('<div id="screen-root"></div>');
@@ -42,6 +44,8 @@ let ui = {
   prefillCode: new URLSearchParams(location.search).get('code') || '',
   showHistory: false, // écran Historique, accessible depuis l'accueil, indépendant d'une session de partie
   historyDetailId: null,
+  showTutorial: false, // accessible à tout moment (accueil, Dossier, écran spectateur)
+  tutorialStep: 0,
   view: 'mission', // sous-écran quand la partie est en cours : mission | dossier
   dismissedSosId: null,
   dismissedClaimIds: new Set(), // "Pas entendu" : fermeture locale, le serveur ne fait rien exprès
@@ -242,7 +246,8 @@ function handleNotify(payload) {
 }
 
 function currentScreen() {
-  // Consultable depuis l'accueil, sans être dans une partie — indépendant de la session WS.
+  // Consultables à tout moment, indépendamment d'être dans une partie ou pas.
+  if (ui.showTutorial) return 'tutorial';
   if (ui.showHistory) return ui.historyDetailId ? 'history-detail' : 'history';
   if (!session || !serverState) return 'loading';
   const status = serverState.room.status;
@@ -303,6 +308,7 @@ function renderStatusStrip() {
 function renderScreen() {
   const screen = currentScreen();
   const ctx = buildCtx();
+  if (screen === 'tutorial') return Tutorial.render(screenRoot, ctx);
   if (screen === 'history') return History.renderList(screenRoot, ctx);
   if (screen === 'history-detail') return History.renderDetail(screenRoot, ctx);
   if (screen === 'home' || (screen === 'loading' && !session)) {
@@ -520,6 +526,12 @@ async function boot() {
   }
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js').catch(() => {});
+  }
+  // Premier lancement jamais vu, et pas déjà en pleine partie : on propose le tutoriel
+  // spontanément. Il reste consultable manuellement ensuite (accueil, Dossier, spectateur).
+  if (!session && !localStorage.getItem(LS_TUTORIAL_SEEN)) {
+    localStorage.setItem(LS_TUTORIAL_SEEN, '1');
+    ui = { ...ui, showTutorial: true };
   }
   render();
   socket.connect();

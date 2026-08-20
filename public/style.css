@@ -96,6 +96,19 @@ input {
 .history-row-main { display: flex; flex-direction: column; gap: 2px; align-items: flex-start; }
 .btn:disabled { opacity: 0.4; pointer-events: none; }
 
+.tutorial-dots { display: flex; justify-content: center; gap: 6px; padding: 4px 0; }
+.tutorial-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--border); }
+.tutorial-dot.active { background: var(--accent); width: 20px; border-radius: 999px; }
+.tutorial-card {
+  flex: 1;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center; gap: 12px;
+  padding: 32px 24px;
+}
+.tutorial-emoji { font-size: 3rem; }
+.tutorial-card h2 { font-size: 1.2rem; }
+.tutorial-card p { color: var(--text-dim); line-height: 1.5; }
+
 .field {
   display: flex;
   flex-direction: column;

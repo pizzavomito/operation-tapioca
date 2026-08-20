@@ -115,6 +115,7 @@ export function render(root, ctx) {
       ` : ''}
 
       <div class="card stack">
+        <button class="btn btn-ghost btn-block" id="show-tutorial">❓ Comment jouer</button>
         <button class="btn btn-ghost btn-block" id="leave-room">Quitter la partie</button>
         <p class="muted small center">Si tu reviens avec le même code, tu recommences à zéro.</p>
       </div>
@@ -124,6 +125,8 @@ export function render(root, ctx) {
   el.querySelectorAll('[data-self]').forEach((btn) => {
     btn.addEventListener('click', () => ctx.actions.tabooSelf(btn.dataset.self));
   });
+
+  el.querySelector('#show-tutorial').addEventListener('click', () => ctx.setUI({ showTutorial: true, tutorialStep: 0 }));
 
   el.querySelector('#report-submit')?.addEventListener('click', () => {
     const targetId = el.querySelector('#report-target').value;

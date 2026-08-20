@@ -73,10 +73,13 @@ export function render(root, ctx) {
       </div>
 
       <div class="card stack">
+        <button class="btn btn-ghost btn-block" id="show-tutorial">❓ Comment jouer</button>
         <button class="btn btn-ghost btn-block" id="leave-room">Quitter la partie</button>
       </div>
     </div>
   `);
+
+  el.querySelector('#show-tutorial').addEventListener('click', () => ctx.setUI({ showTutorial: true, tutorialStep: 0 }));
 
   el.querySelectorAll('[data-emoji]').forEach((btn) => {
     btn.addEventListener('click', () => {

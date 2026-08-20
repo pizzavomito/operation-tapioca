@@ -41,6 +41,7 @@ export function render(root, ctx) {
 
       <p class="muted small center">Aucune inscription. Le code de partie se scanne en QR une fois dans le salon.</p>
 
+      <button class="btn btn-ghost btn-block" id="show-tutorial">❓ Comment jouer</button>
       <button class="btn btn-ghost btn-block" id="show-history">📜 Historique des parties</button>
       <button class="btn btn-ghost btn-block" id="test-vibration">🔊 Tester la vibration du téléphone</button>
     </div>
@@ -85,6 +86,7 @@ export function render(root, ctx) {
     });
   });
 
+  el.querySelector('#show-tutorial').addEventListener('click', () => ctx.setUI({ showTutorial: true, tutorialStep: 0 }));
   el.querySelector('#show-history').addEventListener('click', () => ctx.setUI({ showHistory: true }));
 
   el.querySelector('#test-vibration').addEventListener('click', () => {
