@@ -198,7 +198,7 @@ function handleNotify(payload) {
       render();
       break;
     case 'joined':
-      showToast(`${payload.name} a rejoint la partie.`);
+      showToast(`${payload.name} a rejoint l'opération.`);
       break;
     case 'reconnected':
       showToast(`${payload.name} est de retour.`);
@@ -316,7 +316,7 @@ function renderScreen() {
     return;
   }
   if (screen === 'loading') {
-    screenRoot.replaceChildren(h('<div class="screen center"><p class="muted">Reconnexion à la partie…</p></div>'));
+    screenRoot.replaceChildren(h("<div class=\"screen center\"><p class=\"muted\">Reconnexion à l'opération…</p></div>"));
     return;
   }
   if (screen === 'lobby') return Lobby.render(screenRoot, ctx);

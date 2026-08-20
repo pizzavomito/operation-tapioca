@@ -29,7 +29,7 @@ export function levelTag(level) {
   return `<span class="tag tag-${esc(level)}">${esc(label)}</span>`;
 }
 
-// Confirmation en deux temps sur un bouton (« Terminer l'opération », « Quitter la partie »...) :
+// Confirmation en deux temps sur un bouton (« Terminer l'opération », « Quitter l'opération »...) :
 // premier tap arme le bouton avec un texte différent, deuxième tap dans la fenêtre déclenche
 // vraiment l'action. Évite une boîte de dialogue native (bruyante, pas dans le ton du jeu).
 export function mountTwoTapConfirm(btn, { armedText, onConfirm, timeoutMs = 4000 }) {

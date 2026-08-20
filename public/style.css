@@ -92,8 +92,11 @@ input {
   background: transparent;
 }
 .btn-block { width: 100%; }
-.history-row-btn { justify-content: space-between; text-align: left; }
-.history-row-main { display: flex; flex-direction: column; gap: 2px; align-items: flex-start; }
+.history-row-item { display: flex; gap: 8px; }
+.history-row-btn { flex: 1; justify-content: space-between; text-align: left; min-width: 0; }
+.history-row-main { display: flex; flex-direction: column; gap: 2px; align-items: flex-start; min-width: 0; }
+.history-row-main strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+.history-delete-btn { flex: 0 0 56px; font-size: 1.1rem; }
 .btn:disabled { opacity: 0.4; pointer-events: none; }
 
 .tutorial-dots { display: flex; justify-content: center; gap: 6px; padding: 4px 0; }
@@ -240,6 +243,10 @@ select:focus { outline: 2px solid var(--accent); }
 .player-row .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-dim); }
 .player-row.connected .dot { background: var(--success); }
 .player-row .host-badge { font-size: 0.7rem; color: var(--accent); }
+.operation-name {
+  text-align: center; font-size: 1.1rem; font-weight: 700; color: var(--accent);
+  padding-top: 6px;
+}
 .room-code {
   font-size: 2.2rem; font-weight: 800; letter-spacing: 0.25em;
   text-align: center; padding: 14px 0;

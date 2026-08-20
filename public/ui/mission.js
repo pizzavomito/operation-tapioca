@@ -14,7 +14,7 @@ export function render(root, ctx) {
   const el = h(`
     <div class="screen screen-with-tabbar" style="gap:14px;">
       <div class="row">
-        <span class="muted small">Salle : ${esc(ctx.server.room.code)}</span>
+        <span class="muted small">${ctx.server.room.name ? esc(ctx.server.room.name) : `Salle : ${esc(ctx.server.room.code)}`}</span>
         <span class="spacer"></span>
         <span class="muted small">Score : <strong style="color:var(--accent)">${me.score}</strong></span>
       </div>

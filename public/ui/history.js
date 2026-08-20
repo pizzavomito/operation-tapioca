@@ -1,7 +1,15 @@
-import { h, esc } from './components.js';
+import { h, esc, mountTwoTapConfirm } from './components.js';
 
 function fmtDate(ts) {
   return new Date(ts).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
+async function deleteGame(id) {
+  try {
+    await fetch(`/api/history/${encodeURIComponent(id)}`, { method: 'DELETE' });
+  } catch {
+    // hors ligne ou serveur indisponible : rien à faire de plus, le fichier reste sur le serveur
+  }
 }
 
 export async function renderList(root, ctx) {
@@ -21,16 +29,19 @@ export async function renderList(root, ctx) {
         <h1>Historique</h1>
         <p>Les opérations passées, pour se souvenir.</p>
       </div>
-      ${games.length === 0 ? '<p class="muted small center">Aucune partie terminée pour l\'instant.</p>' : ''}
+      ${games.length === 0 ? '<p class="muted small center">Aucune opération terminée pour l\'instant.</p>' : ''}
       <div class="stack">
         ${games.map((g) => `
-          <button class="btn btn-block history-row-btn" data-id="${esc(g.id)}">
-            <span class="history-row-main">
-              <strong>${esc(g.code)}</strong>
-              <span class="muted small">${esc(fmtDate(g.endedAt))} · ${g.playerCount} agent(s)</span>
-            </span>
-            <span class="muted small">${g.podium[0] ? '🥇 ' + esc(g.podium[0].name) : ''}</span>
-          </button>
+          <div class="history-row-item">
+            <button class="btn history-row-btn" data-id="${esc(g.id)}">
+              <span class="history-row-main">
+                <strong>${g.name ? esc(g.name) : esc(g.code)}</strong>
+                <span class="muted small">${g.name ? esc(g.code) + ' · ' : ''}${esc(fmtDate(g.endedAt))} · ${g.playerCount} agent(s)</span>
+              </span>
+              <span class="muted small">${g.podium[0] ? '🥇 ' + esc(g.podium[0].name) : ''}</span>
+            </button>
+            <button class="btn btn-ghost history-delete-btn" data-delete-id="${esc(g.id)}" title="Supprimer">🗑️</button>
+          </div>
         `).join('')}
       </div>
       <button class="btn btn-ghost btn-block" id="history-back">Retour</button>
@@ -39,6 +50,15 @@ export async function renderList(root, ctx) {
 
   el.querySelectorAll('[data-id]').forEach((btn) => {
     btn.addEventListener('click', () => ctx.setUI({ historyDetailId: btn.dataset.id }));
+  });
+  el.querySelectorAll('[data-delete-id]').forEach((btn) => {
+    mountTwoTapConfirm(btn, {
+      armedText: 'Sûr ?',
+      onConfirm: async () => {
+        await deleteGame(btn.dataset.deleteId);
+        renderList(root, ctx); // rafraîchit la liste sans l'entrée supprimée
+      },
+    });
   });
   el.querySelector('#history-back').addEventListener('click', () => ctx.setUI({ showHistory: false, historyDetailId: null }));
 
@@ -60,7 +80,7 @@ export async function renderDetail(root, ctx) {
   if (!game) {
     const el = h(`
       <div class="screen center">
-        <p class="muted">Partie introuvable.</p>
+        <p class="muted">Opération introuvable.</p>
         <button class="btn" id="history-back">Retour</button>
       </div>
     `);
@@ -77,8 +97,8 @@ export async function renderDetail(root, ctx) {
   const el = h(`
     <div class="screen" style="gap:16px;">
       <div class="brand">
-        <h1>${esc(game.code)}</h1>
-        <p>${esc(fmtDate(game.endedAt))}</p>
+        <h1>${game.name ? esc(game.name) : esc(game.code)}</h1>
+        <p>${game.name ? esc(game.code) + ' · ' : ''}${esc(fmtDate(game.endedAt))}</p>
       </div>
 
       <div class="card">
@@ -125,8 +145,16 @@ export async function renderDetail(root, ctx) {
       ` : ''}
 
       <button class="btn btn-ghost btn-block" id="history-back">Retour à la liste</button>
+      <button class="btn btn-ghost btn-block" id="history-delete">Supprimer cette opération</button>
     </div>
   `);
   el.querySelector('#history-back').addEventListener('click', () => ctx.setUI({ historyDetailId: null }));
+  mountTwoTapConfirm(el.querySelector('#history-delete'), {
+    armedText: 'Sûr ? Retape pour confirmer',
+    onConfirm: async () => {
+      await deleteGame(id);
+      ctx.setUI({ historyDetailId: null });
+    },
+  });
   root.replaceChildren(el);
 }

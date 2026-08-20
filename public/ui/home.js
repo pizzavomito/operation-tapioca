@@ -15,7 +15,7 @@ export function render(root, ctx) {
 
       <div class="row" style="justify-content:center;">
         <button class="btn ${mode === 'join' ? 'btn-primary' : ''}" data-mode="join">Rejoindre</button>
-        <button class="btn ${mode === 'create' ? 'btn-primary' : ''}" data-mode="create">Créer une partie</button>
+        <button class="btn ${mode === 'create' ? 'btn-primary' : ''}" data-mode="create">Créer une opération</button>
       </div>
 
       <div class="card stack">
@@ -25,7 +25,7 @@ export function render(root, ctx) {
         </div>
         ${mode === 'join' ? `
           <div class="field code-input">
-            <label for="code">Code de partie</label>
+            <label for="code">Code d'opération</label>
             <input id="code" type="text" maxlength="4" placeholder="ABCD" autocomplete="off" value="${esc(code)}" />
           </div>
           <label class="row checkbox-row">
@@ -39,10 +39,10 @@ export function render(root, ctx) {
         </button>
       </div>
 
-      <p class="muted small center">Aucune inscription. Le code de partie se scanne en QR une fois dans le salon.</p>
+      <p class="muted small center">Aucune inscription. Le code d'opération se scanne en QR une fois dans le salon.</p>
 
       <button class="btn btn-ghost btn-block" id="show-tutorial">❓ Comment jouer</button>
-      <button class="btn btn-ghost btn-block" id="show-history">📜 Historique des parties</button>
+      <button class="btn btn-ghost btn-block" id="show-history">📜 Historique des opérations</button>
       <button class="btn btn-ghost btn-block" id="test-vibration">🔊 Tester la vibration du téléphone</button>
     </div>
   `);

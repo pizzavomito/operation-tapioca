@@ -116,7 +116,7 @@ export function render(root, ctx) {
 
       <div class="card stack">
         <button class="btn btn-ghost btn-block" id="show-tutorial">❓ Comment jouer</button>
-        <button class="btn btn-ghost btn-block" id="leave-room">Quitter la partie</button>
+        <button class="btn btn-ghost btn-block" id="leave-room">Quitter l'opération</button>
         <p class="muted small center">Si tu reviens avec le même code, tu recommences à zéro.</p>
       </div>
     </div>

@@ -28,7 +28,7 @@ const STEPS = [
   {
     emoji: '🤐',
     title: 'Tabous',
-    text: "Tu reçois 3 formules interdites en début de partie. Si tu en dis une, auto-déclare-toi (léger malus, mais bonus d'honnêteté) plutôt que d'attendre de te faire signaler.",
+    text: "Tu reçois 3 formules interdites en début d'opération. Si tu en dis une, auto-déclare-toi (léger malus, mais bonus d'honnêteté) plutôt que d'attendre de te faire signaler.",
   },
   {
     emoji: '🔋',
@@ -53,7 +53,7 @@ const STEPS = [
   {
     emoji: '📖',
     title: 'Dossier & Historique',
-    text: "Ton Dossier regroupe scores, tabous, journal de la partie, et le bouton pour quitter. Une fois la partie finie, retrouve-la dans l'Historique depuis l'accueil.",
+    text: "Ton Dossier regroupe scores, tabous, journal de l'opération, et le bouton pour quitter. Une fois l'opération finie, retrouve-la dans l'Historique depuis l'accueil.",
   },
 ];
 

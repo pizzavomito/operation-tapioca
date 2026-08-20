@@ -63,6 +63,7 @@ export class RoomStore {
     const code = makeRoomCode(new Set(this.rooms.keys()));
     const room = {
       code,
+      name: '', // nom d'opération donné par l'hôte, facultatif — voir game.js#updateSettings
       createdAt: Date.now(),
       hostId: hostPlayerId,
       status: 'lobby',
@@ -140,6 +141,7 @@ export class RoomStore {
           ...r,
           // Rétrocompatibilité : un snapshot pris avant l'ajout d'un champ ne l'a pas.
           // Sans ce filet, un ancien snapshot fait planter le serveur en boucle au redémarrage.
+          name: r.name || '',
           log: r.log || [],
           chat: r.chat || [],
           players: new Map(

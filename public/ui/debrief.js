@@ -1,7 +1,7 @@
 import { h, esc } from './components.js';
 
 export function render(root, ctx) {
-  const { debrief, me } = ctx.server;
+  const { debrief, me, room } = ctx.server;
   const podium = debrief?.podium || [];
   const titles = debrief?.titles || {};
   const order = [1, 0, 2]; // 2e, 1er, 3e — mise en scène classique du podium
@@ -12,6 +12,8 @@ export function render(root, ctx) {
         <h1>Débriefing</h1>
         <p>Le repas est sauvé. Voici le tableau d'honneur.</p>
       </div>
+
+      ${room.name ? `<p class="operation-name">« ${esc(room.name)} »</p>` : ''}
 
       <div class="podium">
         ${order.map((i) => {

@@ -105,7 +105,7 @@ export function removePlayer(room, playerId) {
     }
   }
 
-  logEvent(room, `🚪 ${player.name} a quitté la partie.`);
+  logEvent(room, `🚪 ${player.name} a quitté l'opération.`);
   return player;
 }
 
@@ -114,11 +114,14 @@ export function recomputeWitnessRequirement(room) {
 }
 
 export function updateSettings(room, patch) {
-  if (room.status !== 'lobby') return { error: 'Les réglages sont verrouillés une fois la partie lancée.' };
+  if (room.status !== 'lobby') return { error: "Les réglages sont verrouillés une fois l'opération lancée." };
   if (patch.missionQueueMax != null) {
     const v = Math.round(patch.missionQueueMax);
     if (v < 1 || v > 3) return { error: 'La file de missions doit être entre 1 et 3.' };
     room.settings.missionQueueMax = v;
+  }
+  if (patch.name != null) {
+    room.name = String(patch.name).trim().slice(0, 60);
   }
   return {};
 }
@@ -126,7 +129,7 @@ export function updateSettings(room, patch) {
 export function addCustomTaboo(room, text) {
   const trimmed = (text || '').trim();
   if (!trimmed) return { error: 'Formule tabou vide.' };
-  if (room.status !== 'lobby') return { error: 'On ne modifie plus le deck une fois la partie lancée.' };
+  if (room.status !== 'lobby') return { error: "On ne modifie plus le deck une fois l'opération lancée." };
   const taboo = { id: newId('taboo'), text: trimmed };
   room.customTaboos.push(taboo);
   return { taboo };
@@ -571,6 +574,7 @@ export function serializeStateFor(room, playerId) {
     payload: {
       room: {
         code: room.code,
+        name: room.name || '',
         status: room.status,
         settings: room.settings,
         customTaboos: room.customTaboos,

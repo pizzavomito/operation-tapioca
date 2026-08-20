@@ -12,7 +12,7 @@ export function render(root, ctx) {
   const el = h(`
     <div class="screen" style="gap:16px;">
       <div class="brand">
-        <h1>Tu suis la partie</h1>
+        <h1>Tu suis l'opération</h1>
         <p>Aucune mission pour toi — juste de quoi encourager la table.</p>
       </div>
 
@@ -74,7 +74,7 @@ export function render(root, ctx) {
 
       <div class="card stack">
         <button class="btn btn-ghost btn-block" id="show-tutorial">❓ Comment jouer</button>
-        <button class="btn btn-ghost btn-block" id="leave-room">Quitter la partie</button>
+        <button class="btn btn-ghost btn-block" id="leave-room">Quitter l'opération</button>
       </div>
     </div>
   `);

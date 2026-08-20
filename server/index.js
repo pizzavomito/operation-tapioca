@@ -26,15 +26,20 @@ app.get('/taboos.json', (req, res) => res.sendFile(path.join(__dirname, 'data', 
 // Clé publique VAPID pour l'abonnement Web Push côté client (notifications même app en arrière-plan).
 app.get('/push/vapid-public-key', (req, res) => res.type('text/plain').send(push.getPublicKey()));
 
-// Historique des parties terminées (§ demande : consulter une opération après coup).
+// Historique des opérations terminées (§ demande : consulter une opération après coup).
 app.get('/api/history', (req, res) => res.json(history.listGames()));
 app.get('/api/history/:id', (req, res) => {
   const record = history.loadGame(req.params.id);
-  if (!record) return res.status(404).json({ error: 'Partie introuvable.' });
+  if (!record) return res.status(404).json({ error: "Opération introuvable." });
   res.json(record);
 });
+app.delete('/api/history/:id', (req, res) => {
+  const ok = history.deleteGame(req.params.id);
+  if (!ok) return res.status(404).json({ error: "Opération introuvable." });
+  res.status(204).end();
+});
 
-// QR code de la partie (écran Salon, §6) : encode l'URL de rejoin directe.
+// QR code de l'opération (écran Salon, §6) : encode l'URL de rejoin directe.
 app.get('/qr/:code.svg', async (req, res) => {
   const code = String(req.params.code || '').toUpperCase();
   const url = `${req.protocol}://${req.get('host')}/?code=${encodeURIComponent(code)}`;
@@ -169,11 +174,11 @@ function handleJoin(ws, payload) {
   let isHost = false;
   if (roomCode) {
     room = store.get(roomCode);
-    if (!room) return sendError(ws, 'Partie introuvable. Vérifie le code.');
+    if (!room) return sendError(ws, "Opération introuvable. Vérifie le code.");
     if (room.status === 'ended') return sendError(ws, "L'opération est terminée.");
     // Rejoindre en cours de route est permis (onboardLateJoiner s'occupe de l'attribution) —
     // seule une partie déjà finie est fermée.
-    if (room.players.size >= 8) return sendError(ws, 'La partie est complète (8 agents max).');
+    if (room.players.size >= 8) return sendError(ws, "L'opération est complète (8 agents max).");
   } else {
     const hostId = newId('p');
     room = store.create(hostId);
@@ -190,7 +195,7 @@ function handleJoin(ws, payload) {
   if (room.status === 'playing') {
     game.onboardLateJoiner(room, player, content);
   } else {
-    game.logEvent(room, isSpectator ? `👀 ${player.name} suit la partie.` : `👋 ${player.name} a rejoint la partie.`);
+    game.logEvent(room, isSpectator ? `👀 ${player.name} suit l'opération.` : `👋 ${player.name} a rejoint l'opération.`);
   }
 
   ws.meta = { roomCode: room.code, playerId };
@@ -204,7 +209,7 @@ function handleAction(ws, room, player, type, payload) {
   switch (type) {
     case C2S.START: {
       if (!player.isHost) return sendError(ws, "Seul l'hôte peut lancer l'opération.");
-      if (room.status !== 'lobby') return sendError(ws, 'La partie est déjà lancée.');
+      if (room.status !== 'lobby') return sendError(ws, "L'opération est déjà lancée.");
       const activeCount = [...room.players.values()].filter((p) => !p.isSpectator).length;
       if (activeCount < 2) return sendError(ws, 'Il faut au moins 2 agents (les spectateurs ne comptent pas).');
       game.startGame(room, content);
@@ -233,14 +238,14 @@ function handleAction(ws, room, player, type, payload) {
     }
 
     case C2S.MISSION_DONE: {
-      if (room.status !== 'playing') return sendError(ws, "La partie n'est pas en cours.");
+      if (room.status !== 'playing') return sendError(ws, "L'opération n'est pas en cours.");
       const res = game.completeMission(room, player, payload.missionId, broadcast);
       if (res.error) sendError(ws, res.error);
       break;
     }
 
     case C2S.MISSION_SKIP: {
-      if (room.status !== 'playing') return sendError(ws, "La partie n'est pas en cours.");
+      if (room.status !== 'playing') return sendError(ws, "L'opération n'est pas en cours.");
       const res = game.skipMission(room, player, payload.missionId);
       if (res.error) return sendError(ws, res.error);
       broadcast(room, () => null);
@@ -254,7 +259,7 @@ function handleAction(ws, room, player, type, payload) {
     }
 
     case C2S.CONTAMINATION_CLAIM: {
-      if (room.status !== 'playing') return sendError(ws, "La partie n'est pas en cours.");
+      if (room.status !== 'playing') return sendError(ws, "L'opération n'est pas en cours.");
       const res = game.claimContamination(room, player, payload.missionId, broadcast);
       if (res.error) sendError(ws, res.error);
       break;

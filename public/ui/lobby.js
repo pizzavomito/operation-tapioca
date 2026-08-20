@@ -13,8 +13,9 @@ export function render(root, ctx) {
         <p>On attend tout le monde. Le repas peut commencer dès que l'équipe est là.</p>
       </div>
 
+      ${room.name ? `<p class="operation-name">« ${esc(room.name)} »</p>` : ''}
       <div class="room-code">${esc(room.code)}</div>
-      <div class="qr-wrap"><img alt="QR code de la partie" src="/qr/${esc(room.code)}.svg" /></div>
+      <div class="qr-wrap"><img alt="QR code de l'opération" src="/qr/${esc(room.code)}.svg" /></div>
 
       <div class="card">
         <h3 style="margin-bottom:10px;">Agents (${agents.length}/8)</h3>
@@ -50,6 +51,10 @@ export function render(root, ctx) {
       ${isHost ? `
         <div class="card stack">
           <h3>Réglages</h3>
+          <div class="field">
+            <label for="op-name">Nom de l'opération (facultatif)</label>
+            <input id="op-name" type="text" maxlength="60" placeholder="ex : Repas de Noël" value="${esc(room.name || '')}" />
+          </div>
           <div class="row">
             <span class="small muted">Missions en file</span>
             <span class="spacer"></span>
@@ -83,6 +88,9 @@ export function render(root, ctx) {
   `);
 
   if (isHost) {
+    el.querySelector('#op-name').addEventListener('change', (e) => {
+      ctx.actions.updateSettings({ name: e.target.value });
+    });
     el.querySelectorAll('[data-q]').forEach((btn) => {
       btn.addEventListener('click', () => {
         const next = room.settings.missionQueueMax + Number(btn.dataset.q);

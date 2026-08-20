@@ -18,6 +18,7 @@ export function saveGameRecord(room) {
   const record = {
     id: `${room.code}-${endedAt}`,
     code: room.code,
+    name: room.name || '',
     createdAt: room.createdAt,
     endedAt,
     players: [...room.players.values()].map((p) => ({
@@ -54,6 +55,7 @@ export function listGames() {
           return {
             id: record.id,
             code: record.code,
+            name: record.name || '',
             endedAt: record.endedAt,
             playerCount: record.players.filter((p) => !p.isSpectator).length,
             podium: record.debrief?.podium || [],
@@ -70,19 +72,39 @@ export function listGames() {
   }
 }
 
-export function loadGame(id) {
-  ensureDir();
-  // L'id vient d'une requête HTTP : on le nettoie avant de bâtir un chemin de fichier avec,
-  // pour ne jamais laisser un id forgé sortir du dossier history/ (path traversal).
+// L'id vient d'une requête HTTP : on le nettoie avant de bâtir un chemin de fichier avec,
+// pour ne jamais laisser un id forgé sortir du dossier history/ (path traversal).
+function safeFilePath(id) {
   const safe = String(id || '').replace(/[^a-zA-Z0-9-]/g, '');
   if (!safe) return null;
   const filePath = path.join(HISTORY_DIR, `${safe}.json`);
   if (!filePath.startsWith(HISTORY_DIR)) return null;
+  return filePath;
+}
+
+export function loadGame(id) {
+  ensureDir();
+  const filePath = safeFilePath(id);
+  if (!filePath) return null;
   try {
     if (!fs.existsSync(filePath)) return null;
     return JSON.parse(fs.readFileSync(filePath, 'utf8'));
   } catch (err) {
     console.error('[history] échec de lecture', err);
     return null;
+  }
+}
+
+export function deleteGame(id) {
+  ensureDir();
+  const filePath = safeFilePath(id);
+  if (!filePath) return false;
+  try {
+    if (!fs.existsSync(filePath)) return false;
+    fs.unlinkSync(filePath);
+    return true;
+  } catch (err) {
+    console.error('[history] échec de suppression', err);
+    return false;
   }
 }
