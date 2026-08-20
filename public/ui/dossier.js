@@ -12,7 +12,6 @@ export function render(root, ctx) {
   const reports = me.reportsMade || [];
   const ranked = players.filter((p) => !p.isSpectator).sort((a, b) => b.score - a.score);
   const spectators = players.filter((p) => p.isSpectator);
-  const log = (room.log || []).slice().reverse();
 
   const el = h(`
     <div class="screen screen-with-tabbar" style="gap:16px;">
@@ -99,13 +98,7 @@ export function render(root, ctx) {
         </div>
       </div>
 
-      <div class="card">
-        <h3 style="margin-bottom:10px;">Journal</h3>
-        <div class="history-list">
-          ${log.length === 0 ? '<p class="muted small">Rien pour l\'instant.</p>' : ''}
-          ${log.map((entry) => `<div class="log-row">${esc(entry.text)}</div>`).join('')}
-        </div>
-      </div>
+      <button class="btn btn-block" id="show-journal">📜 Journal de l'opération</button>
 
       ${me.isHost ? `
         <div class="card stack">
@@ -127,6 +120,7 @@ export function render(root, ctx) {
   });
 
   el.querySelector('#show-tutorial').addEventListener('click', () => ctx.setUI({ showTutorial: true, tutorialStep: 0 }));
+  el.querySelector('#show-journal').addEventListener('click', () => ctx.setUI({ view: 'journal' }));
 
   el.querySelector('#report-submit')?.addEventListener('click', () => {
     const targetId = el.querySelector('#report-target').value;

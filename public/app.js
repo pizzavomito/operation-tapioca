@@ -9,6 +9,7 @@ import * as Dossier from './ui/dossier.js';
 import * as Spectator from './ui/spectator.js';
 import * as Chat from './ui/chat.js';
 import * as Challenges from './ui/challenges.js';
+import * as Journal from './ui/journal.js';
 import * as Debrief from './ui/debrief.js';
 import * as History from './ui/history.js';
 import * as Tutorial from './ui/tutorial.js';
@@ -292,6 +293,7 @@ function currentScreen() {
   if (status === 'playing') {
     if (serverState.me?.isSpectator) return 'spectator';
     if (ui.view === 'dossier') return 'dossier';
+    if (ui.view === 'journal') return 'journal';
     if (ui.view === 'chat') return 'chat';
     if (ui.view === 'challenges') return 'challenges';
     return 'mission';
@@ -377,6 +379,7 @@ function renderScreen() {
   if (screen === 'lobby') return Lobby.render(screenRoot, ctx);
   if (screen === 'mission') return Mission.render(screenRoot, ctx);
   if (screen === 'dossier') return Dossier.render(screenRoot, ctx);
+  if (screen === 'journal') return Journal.render(screenRoot, ctx);
   if (screen === 'chat') return Chat.render(screenRoot, ctx);
   if (screen === 'challenges') return Challenges.render(screenRoot, ctx);
   if (screen === 'spectator') return Spectator.render(screenRoot, ctx);
@@ -499,9 +502,11 @@ function renderTabBar() {
     tabBarEl.querySelector('#tab-challenges')?.addEventListener('click', () => setUI({ view: 'challenges' }));
     document.body.appendChild(tabBarEl);
   }
-  const activeViews = ['dossier', 'chat', 'challenges'];
+  const activeViews = ['dossier', 'journal', 'chat', 'challenges'];
   tabBarEl.querySelector('#tab-mission').classList.toggle('active', !activeViews.includes(ui.view));
-  tabBarEl.querySelector('#tab-dossier').classList.toggle('active', ui.view === 'dossier');
+  // Le journal est une sous-page du Dossier (pas son propre onglet) : l'onglet Dossier reste
+  // actif quand on y est, comme si on n'en était jamais vraiment sorti.
+  tabBarEl.querySelector('#tab-dossier').classList.toggle('active', ui.view === 'dossier' || ui.view === 'journal');
   tabBarEl.querySelector('#tab-chat').classList.toggle('active', ui.view === 'chat');
   const unread = Math.max(0, (serverState.room.chat || []).length - (ui.chatSeenCount || 0));
   tabBarEl.querySelector('#chat-badge').hidden = ui.view === 'chat' || unread === 0;
