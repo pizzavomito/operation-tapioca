@@ -316,6 +316,17 @@ select:focus { outline: 2px solid var(--accent); }
 /* ---------- Dossier ---------- */
 .score-hero { text-align: center; padding: 10px 0; }
 .score-hero .value { font-size: 3rem; font-weight: 800; color: var(--accent); }
+
+.score-list { display: flex; flex-direction: column; gap: 6px; }
+.score-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px; border-radius: var(--radius-sm);
+  background: var(--bg-elevated); border: 1px solid var(--border);
+  font-size: 0.92rem;
+}
+.score-row.self { border-color: var(--accent); background: var(--accent-soft); }
+.score-row .rank { color: var(--text-dim); font-size: 0.78rem; width: 1.2em; }
+.score-row .score { font-weight: 700; color: var(--accent); }
 .history-list { display: flex; flex-direction: column; gap: 8px; }
 .history-row {
   display: flex; align-items: center; gap: 10px;
@@ -370,8 +381,32 @@ select:focus { outline: 2px solid var(--accent); }
   text-align: center; font-size: 0.78rem; color: var(--text-dim);
   padding: 6px; border-radius: var(--radius-sm);
   background: var(--bg-elevated);
+  margin-bottom: 12px;
 }
 .connection-banner.offline { color: var(--danger); }
+
+.status-strip {
+  display: flex; flex-wrap: wrap; gap: 8px;
+  margin-bottom: 12px;
+}
+.status-pill {
+  min-height: 40px;
+  border-radius: 999px;
+  border: 1px solid var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+  padding: 6px 14px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.status-pill-urgent {
+  border-color: var(--danger);
+  background: var(--danger-soft);
+  color: var(--danger);
+}
 
 @media (prefers-reduced-motion: reduce) {
   * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }

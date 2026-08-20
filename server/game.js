@@ -89,9 +89,22 @@ function fillMissionSlot(room, player) {
   return id;
 }
 
+// Un agent ne peut avoir qu'une seule demande en cours par mission et par nature
+// (mission ou contamination) — sinon un double-tap sur « C'est fait » crée deux
+// témoignages distincts pour la même mission et peut faire créditer les points deux fois.
+function hasPendingClaim(room, playerId, missionId, kind) {
+  for (const c of room.claims.values()) {
+    if (c.status === 'pending' && c.playerId === playerId && c.missionId === missionId && c.kind === kind) return true;
+  }
+  return false;
+}
+
 export function completeMission(room, player, missionId, broadcast) {
   if (!player.missionQueue.includes(missionId)) {
     return { error: 'Cette mission n\'est plus active.' };
+  }
+  if (hasPendingClaim(room, player.id, missionId, 'mission')) {
+    return { error: 'Cette mission est déjà en attente de validation.' };
   }
   const mission = room.allMissions.get(missionId);
   const claimId = newId('claim');
@@ -123,6 +136,9 @@ export function completeMission(room, player, missionId, broadcast) {
 export function skipMission(room, player, missionId) {
   const idx = player.missionQueue.indexOf(missionId);
   if (idx === -1) return { error: 'Cette mission n\'est plus active.' };
+  if (hasPendingClaim(room, player.id, missionId, 'mission')) {
+    return { error: 'Impossible de passer : une validation est en cours.' };
+  }
   player.missionQueue.splice(idx, 1);
   const skipped = room.allMissions.get(missionId);
   player.missionHistory.push({
@@ -140,6 +156,9 @@ export function claimContamination(room, player, missionId, broadcast) {
   const inHistory = player.missionHistory.some((h) => h.missionId === missionId && h.status === 'validated');
   const inQueue = player.missionQueue.includes(missionId);
   if (!inHistory && !inQueue) return { error: "Mission introuvable pour la contamination." };
+  if (hasPendingClaim(room, player.id, missionId, 'contamination')) {
+    return { error: 'Cette contamination est déjà en attente de validation.' };
+  }
   const mission = room.allMissions.get(missionId);
   const claimId = newId('claim');
   const timer = setTimeout(() => expireClaim(room, claimId, broadcast), WITNESS_WINDOW_MS);
@@ -428,6 +447,13 @@ export function serializeStateFor(room, playerId) {
     .filter((r) => r.status === 'pending' && r.targetId === playerId)
     .map((r) => ({ reportId: r.id, tabooId: r.tabooId }));
 
+  // Mes propres demandes en attente (mission / contamination que j'ai déclarées) : sert au
+  // client à désactiver « C'est fait » / « Contamination » tant que ça n'est pas tranché,
+  // plutôt que de laisser retaper et créer des doublons.
+  const myPendingClaims = [...room.claims.values()]
+    .filter((c) => c.status === 'pending' && c.playerId === playerId)
+    .map((c) => ({ claimId: c.id, kind: c.kind, missionId: c.missionId }));
+
   return {
     type: 'state',
     payload: {
@@ -445,6 +471,7 @@ export function serializeStateFor(room, playerId) {
             missionHistory: self.missionHistory,
             tabooIncidents: self.tabooIncidents,
             reportsMade: self.reportsMade,
+            pendingClaims: myPendingClaims,
             sosHandled: self.sosHandled,
             contaminations: self.contaminations,
           }

@@ -1,7 +1,7 @@
 // État client + routage d'écrans (§7 du PRD).
 import { GameSocket } from './ws.js';
 import { C2S, S2C } from './protocol.js';
-import { h, vibrate } from './ui/components.js';
+import { h, esc, vibrate } from './ui/components.js';
 import * as Home from './ui/home.js';
 import * as Lobby from './ui/lobby.js';
 import * as Terrain from './ui/terrain.js';
@@ -14,7 +14,8 @@ const LS_SESSION = 'tapioca:session';
 const appRoot = document.getElementById('app');
 const screenRoot = h('<div id="screen-root"></div>');
 const bannerRoot = h('<div id="banner-root"></div>');
-appRoot.append(bannerRoot, screenRoot);
+const statusRoot = h('<div id="status-root"></div>');
+appRoot.append(bannerRoot, statusRoot, screenRoot);
 
 const overlayRoot = h('<div id="overlay-root"></div>');
 const toastRoot = h('<div id="toast-root"></div>');
@@ -209,6 +210,7 @@ function buildCtx() {
 
 function render() {
   renderBanner();
+  renderStatusStrip();
   renderScreen();
   renderOverlay();
   renderToast();
@@ -219,6 +221,28 @@ function renderBanner() {
   bannerRoot.innerHTML = connectionStatus === 'offline'
     ? '<div class="connection-banner offline">Hors ligne — reconnexion en cours…</div>'
     : '';
+}
+
+// Bande persistante (pas juste un overlay qui passe) : ce qui attend une action de ta part
+// reste visible même si tu as fermé l'overlay ("Pas entendu", "Pas maintenant" sur un SOS).
+function renderStatusStrip() {
+  statusRoot.replaceChildren();
+  if (!serverState || serverState.room.status !== 'playing') return;
+  const witnessCount = (serverState.pendingWitnessRequests || []).length;
+  const sos = serverState.sos && serverState.sos.raisedBy !== serverState.me.id ? serverState.sos : null;
+  if (!witnessCount && !sos) return;
+
+  const pills = [];
+  if (witnessCount) {
+    pills.push(`<button class="status-pill" data-reopen="witness">🔔 ${witnessCount} à valider</button>`);
+  }
+  if (sos) {
+    pills.push(`<button class="status-pill status-pill-urgent" data-reopen="sos">🆘 SOS — ${esc(sos.raisedByName)}</button>`);
+  }
+  const strip = h(`<div class="status-strip">${pills.join('')}</div>`);
+  strip.querySelector('[data-reopen="witness"]')?.addEventListener('click', () => setUI({ dismissedClaimIds: new Set() }));
+  strip.querySelector('[data-reopen="sos"]')?.addEventListener('click', () => setUI({ dismissedSosId: null }));
+  statusRoot.appendChild(strip);
 }
 
 function renderScreen() {

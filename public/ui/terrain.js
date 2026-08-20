@@ -6,6 +6,10 @@ export function render(root, ctx) {
   const lastValidated = [...me.missionHistory].reverse().find((h) => h.status === 'validated');
   const contaminationTarget = mission?.id || lastValidated?.missionId || null;
 
+  const pendingClaims = me.pendingClaims || [];
+  const pendingMission = mission && pendingClaims.find((c) => c.kind === 'mission' && c.missionId === mission.id);
+  const pendingContamination = contaminationTarget && pendingClaims.find((c) => c.kind === 'contamination' && c.missionId === contaminationTarget);
+
   const el = h(`
     <div class="screen" style="gap:14px;">
       <div class="row">
@@ -18,17 +22,21 @@ export function render(root, ctx) {
         ${mission ? `
           ${levelTag(mission.level)}
           <p class="mission-text">${esc(mission.text)}</p>
-          <div class="mission-actions">
-            <button class="btn btn-ghost" id="skip">Passer</button>
-            <button class="btn btn-primary btn-block" id="done">C'est fait</button>
-          </div>
+          ${pendingMission ? `
+            <p class="muted small">⏳ En attente d'un témoin pour valider…</p>
+          ` : `
+            <div class="mission-actions">
+              <button class="btn btn-ghost" id="skip">Passer</button>
+              <button class="btn btn-primary btn-block" id="done">C'est fait</button>
+            </div>
+          `}
         ` : `
           <p class="mission-text muted">Aucune mission active pour l'instant.</p>
         `}
       </div>
 
-      <button class="btn btn-block" id="contamination" ${contaminationTarget ? '' : 'disabled'}>
-        🫧 Contamination sur un non-joueur
+      <button class="btn btn-block" id="contamination" ${contaminationTarget && !pendingContamination ? '' : 'disabled'}>
+        ${pendingContamination ? '⏳ Contamination en attente de témoins…' : '🫧 Contamination sur un non-joueur'}
       </button>
 
       <div class="energy-wrap">
@@ -52,19 +60,22 @@ export function render(root, ctx) {
     </div>
   `);
 
-  if (mission) {
-    el.querySelector('#done').addEventListener('click', () => {
+  if (mission && !pendingMission) {
+    el.querySelector('#done').addEventListener('click', (e) => {
+      e.target.disabled = true; // évite un double-tap avant que le nouvel état n'arrive du serveur
       vibrate(20);
       ctx.actions.missionDone(mission.id);
     });
     el.querySelector('#skip').addEventListener('click', () => ctx.actions.missionSkip(mission.id));
   }
 
-  el.querySelector('#contamination').addEventListener('click', () => {
-    if (!contaminationTarget) return;
-    vibrate([20, 40, 20]);
-    ctx.actions.contaminationClaim(contaminationTarget);
-  });
+  if (contaminationTarget && !pendingContamination) {
+    el.querySelector('#contamination').addEventListener('click', (e) => {
+      e.currentTarget.disabled = true;
+      vibrate([20, 40, 20]);
+      ctx.actions.contaminationClaim(contaminationTarget);
+    });
+  }
 
   const energyInput = el.querySelector('#energy');
   const energyValue = el.querySelector('#energy-value');

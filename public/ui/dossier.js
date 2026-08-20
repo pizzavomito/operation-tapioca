@@ -10,12 +10,26 @@ export function render(root, ctx) {
   const others = players.filter((p) => p.id !== me.id);
   const incidents = me.tabooIncidents || [];
   const reports = me.reportsMade || [];
+  const ranked = players.slice().sort((a, b) => b.score - a.score);
 
   const el = h(`
     <div class="screen" style="gap:16px;">
       <div class="score-hero">
         <div class="muted small">Ton score</div>
         <div class="value">${me.score}</div>
+      </div>
+
+      <div class="card">
+        <h3 style="margin-bottom:10px;">Scores</h3>
+        <div class="score-list">
+          ${ranked.map((p, i) => `
+            <div class="score-row ${p.id === me.id ? 'self' : ''}">
+              <span class="rank">${i + 1}</span>
+              <span style="flex:1;">${esc(p.name)}${p.id === me.id ? ' (toi)' : ''}${!p.connected ? ' <span class="muted small">· absent</span>' : ''}</span>
+              <span class="score">${p.score}</span>
+            </div>
+          `).join('')}
+        </div>
       </div>
 
       <div class="card">
