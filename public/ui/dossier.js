@@ -7,10 +7,12 @@ export function render(root, ctx) {
   const { me, players, room } = ctx.server;
   const fullDeck = [...ctx.genericTaboos, ...room.customTaboos];
   const tabooText = (id) => fullDeck.find((t) => t.id === id)?.text || '(formule inconnue)';
-  const others = players.filter((p) => p.id !== me.id);
+  const others = players.filter((p) => p.id !== me.id && !p.isSpectator);
   const incidents = me.tabooIncidents || [];
   const reports = me.reportsMade || [];
-  const ranked = players.slice().sort((a, b) => b.score - a.score);
+  const ranked = players.filter((p) => !p.isSpectator).sort((a, b) => b.score - a.score);
+  const spectators = players.filter((p) => p.isSpectator);
+  const log = (room.log || []).slice().reverse();
 
   const el = h(`
     <div class="screen screen-with-tabbar" style="gap:16px;">
@@ -30,6 +32,7 @@ export function render(root, ctx) {
             </div>
           `).join('')}
         </div>
+        ${spectators.length ? `<p class="muted small" style="margin-top:8px;">Suivent aussi : ${esc(spectators.map((p) => p.name).join(', '))}</p>` : ''}
       </div>
 
       <div class="card">
@@ -95,6 +98,21 @@ export function render(root, ctx) {
           `).join('')}
         </div>
       </div>
+
+      <div class="card">
+        <h3 style="margin-bottom:10px;">Journal</h3>
+        <div class="history-list">
+          ${log.length === 0 ? '<p class="muted small">Rien pour l\'instant.</p>' : ''}
+          ${log.map((entry) => `<div class="log-row">${esc(entry.text)}</div>`).join('')}
+        </div>
+      </div>
+
+      ${me.isHost ? `
+        <div class="card stack">
+          <h3>Zone hôte</h3>
+          <button class="btn btn-danger btn-block" id="end-game">Terminer l'opération</button>
+        </div>
+      ` : ''}
     </div>
   `);
 
@@ -107,6 +125,25 @@ export function render(root, ctx) {
     const tabooId = el.querySelector('#report-taboo').value;
     if (targetId && tabooId) ctx.actions.tabooReport(targetId, tabooId);
   });
+
+  const endBtn = el.querySelector('#end-game');
+  if (endBtn) {
+    let confirming = false;
+    let resetTimer = null;
+    endBtn.addEventListener('click', () => {
+      if (!confirming) {
+        confirming = true;
+        endBtn.textContent = 'Sûr ? Retape pour confirmer';
+        resetTimer = setTimeout(() => {
+          confirming = false;
+          endBtn.textContent = "Terminer l'opération";
+        }, 4000);
+      } else {
+        clearTimeout(resetTimer);
+        ctx.actions.gameEnd();
+      }
+    });
+  }
 
   root.replaceChildren(el);
 }

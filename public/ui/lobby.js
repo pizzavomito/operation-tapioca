@@ -3,6 +3,8 @@ import { h, esc } from './components.js';
 export function render(root, ctx) {
   const { room, me, players } = ctx.server;
   const isHost = !!me?.isHost;
+  const agents = players.filter((p) => !p.isSpectator);
+  const spectators = players.filter((p) => p.isSpectator);
 
   const el = h(`
     <div class="screen">
@@ -15,9 +17,9 @@ export function render(root, ctx) {
       <div class="qr-wrap"><img alt="QR code de la partie" src="/qr/${esc(room.code)}.svg" /></div>
 
       <div class="card">
-        <h3 style="margin-bottom:10px;">Agents (${players.length}/8)</h3>
+        <h3 style="margin-bottom:10px;">Agents (${agents.length}/8)</h3>
         <div class="player-list">
-          ${players.map((p) => `
+          ${agents.map((p) => `
             <div class="player-row ${p.connected ? 'connected' : ''}">
               <span class="dot"></span>
               <span>${esc(p.name)}</span>
@@ -28,6 +30,22 @@ export function render(root, ctx) {
           `).join('')}
         </div>
       </div>
+
+      ${spectators.length ? `
+        <div class="card">
+          <h3 style="margin-bottom:10px;">Spectateurs</h3>
+          <div class="player-list">
+            ${spectators.map((p) => `
+              <div class="player-row ${p.connected ? 'connected' : ''}">
+                <span class="dot"></span>
+                <span>${esc(p.name)}</span>
+                <span class="spacer"></span>
+                ${!p.connected ? '<span class="muted small">absent</span>' : ''}
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      ` : ''}
 
       ${isHost ? `
         <div class="card stack">
@@ -54,10 +72,10 @@ export function render(root, ctx) {
             </div>
           ` : ''}
         </div>
-        <button class="btn btn-primary btn-block" id="start" ${players.length < 2 ? 'disabled' : ''}>
+        <button class="btn btn-primary btn-block" id="start" ${agents.length < 2 ? 'disabled' : ''}>
           Lancer l'opération
         </button>
-        ${players.length < 2 ? '<p class="small muted center">Il faut au moins 2 agents.</p>' : ''}
+        ${agents.length < 2 ? '<p class="small muted center">Il faut au moins 2 agents (les spectateurs ne comptent pas).</p>' : ''}
       ` : `
         <p class="muted center">En attente que l'hôte lance l'opération…</p>
       `}

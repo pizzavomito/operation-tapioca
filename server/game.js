@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { newId, shuffle } from './rooms.js';
-import { S2C, SCORE, WITNESS_WINDOW_MS, ENERGY_LOW_THRESHOLD } from './protocol.js';
+import { S2C, SCORE, WITNESS_WINDOW_MS, ENERGY_LOW_THRESHOLD, CHEER_EMOJIS } from './protocol.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -13,7 +13,7 @@ export function loadContent() {
   return { missions, taboos };
 }
 
-export function createPlayer({ id, token, name, isHost }) {
+export function createPlayer({ id, token, name, isHost, isSpectator }) {
   return {
     id,
     token,
@@ -21,6 +21,7 @@ export function createPlayer({ id, token, name, isHost }) {
     ws: null,
     connected: true,
     isHost: !!isHost,
+    isSpectator: !!isSpectator,
     paused: false,
     score: 0,
     energy: 100,
@@ -34,6 +35,14 @@ export function createPlayer({ id, token, name, isHost }) {
   };
 }
 
+// Fil d'événements de la partie : visible par tout le monde (agents et spectateurs),
+// c'est le seul endroit qui raconte ce qu'il se passe pour ceux qui suivent sans jouer.
+const LOG_MAX = 60;
+export function logEvent(room, text) {
+  room.log.push({ id: newId('log'), ts: Date.now(), text });
+  if (room.log.length > LOG_MAX) room.log.shift();
+}
+
 // ---------- Cycle de vie de la partie ----------
 
 export function startGame(room, content) {
@@ -43,12 +52,14 @@ export function startGame(room, content) {
 
   const tabooDeck = [...content.taboos, ...room.customTaboos];
   for (const player of room.players.values()) {
+    if (player.isSpectator) continue; // pas de mission ni de tabou à suivre pour un spectateur
     player.taboos = shuffle(tabooDeck)
       .slice(0, 3)
       .map((t) => t.id);
     for (let i = 0; i < room.settings.missionQueueMax; i++) fillMissionSlot(room, player);
   }
   recomputeWitnessRequirement(room);
+  logEvent(room, "🚀 L'opération a commencé.");
 }
 
 export function recomputeWitnessRequirement(room) {
@@ -224,6 +235,7 @@ export function witnessVote(room, voter, claimId, vote, broadcast) {
         ts: Date.now(),
       });
       fillMissionSlot(room, requester);
+      logEvent(room, `🎯 ${requester.name} a validé : « ${claim.text} »`);
     } else {
       requester.score += SCORE.CONTAMINATION_VALIDATED;
       requester.contaminations += 1;
@@ -235,6 +247,7 @@ export function witnessVote(room, voter, claimId, vote, broadcast) {
         validatedBy: witnessNames,
         ts: Date.now(),
       });
+      logEvent(room, `🫧 ${requester.name} a réussi une contamination !`);
     }
   }
   for (const witnessId of Object.keys(claim.votes)) {
@@ -286,6 +299,7 @@ export function tabooSelf(room, player, tabooId) {
   if (!player.taboos.includes(tabooId)) return { error: 'Ce tabou ne fait pas partie de tes formules.' };
   player.score += SCORE.TABOO_SELF_NET;
   player.tabooIncidents.push({ tabooId, type: 'self', ts: Date.now() });
+  logEvent(room, `🗣️ ${player.name} a avoué un tabou.`);
   return {};
 }
 
@@ -326,6 +340,7 @@ export function tabooConfirm(room, target, reportId, accept, broadcast) {
   if (accept) {
     target.score += SCORE.TABOO_REPORTED_CONFIRMED;
     target.tabooIncidents.push({ tabooId: report.tabooId, type: 'reported', ts: Date.now() });
+    logEvent(room, `🗣️ ${target.name} a été pris·e en flagrant délit de tabou.`);
   }
   const reporter = room.players.get(report.reporterId);
   if (reporter) {
@@ -367,6 +382,7 @@ export function sosRaise(room, player, broadcast) {
   if (room.sos && room.sos.active) return { error: 'Un SOS est déjà en cours.' };
   const id = newId('sos');
   room.sos = { id, raisedBy: player.id, ts: Date.now(), active: true, responder: null, mode: null };
+  logEvent(room, `🆘 ${player.name} a levé un SOS.`);
   broadcast(room, (targetId) =>
     targetId === player.id ? null : { type: S2C.SOS_ALERT, payload: { sosId: id, raisedByName: player.name } }
   );
@@ -382,6 +398,7 @@ export function sosTake(room, responder, sosId, mode, broadcast) {
   responder.score += SCORE.SOS_RESPONSE;
   responder.sosHandled += 1;
   const raiser = room.players.get(room.sos.raisedBy);
+  logEvent(room, `🆘 ${responder.name} s'occupe du SOS de ${raiser ? raiser.name : '?'} (${mode === 'extraction' ? 'extraction' : 'diversion'}).`);
   broadcast(room, (targetId) =>
     targetId === (raiser && raiser.id)
       ? { type: S2C.NOTIFY, payload: { kind: 'sos-taken', responderName: responder.name, mode } }
@@ -390,11 +407,24 @@ export function sosTake(room, responder, sosId, mode, broadcast) {
   return {};
 }
 
+// ---------- Encouragements (mode spectateur) ----------
+
+export function sendCheer(room, spectator, emoji, broadcast) {
+  if (!spectator.isSpectator) return { error: 'Seul un spectateur peut envoyer un encouragement.' };
+  if (!CHEER_EMOJIS.includes(emoji)) return { error: 'Encouragement invalide.' };
+  logEvent(room, `${emoji} ${spectator.name} envoie ${emoji} à toute la table.`);
+  broadcast(room, (targetId) =>
+    targetId === spectator.id ? null : { type: S2C.NOTIFY, payload: { kind: 'cheer', name: spectator.name, emoji } }
+  );
+  return {};
+}
+
 // ---------- Débriefing ----------
 
 export function endGame(room) {
   room.status = 'ended';
-  const players = [...room.players.values()];
+  logEvent(room, "🏁 L'opération est terminée.");
+  const players = [...room.players.values()].filter((p) => !p.isSpectator);
   const podium = players
     .slice()
     .sort((a, b) => b.score - a.score)
@@ -427,6 +457,7 @@ export function serializeStateFor(room, playerId) {
     id: p.id,
     name: p.name,
     isHost: p.isHost,
+    isSpectator: p.isSpectator,
     connected: p.connected,
     paused: p.paused,
     score: p.score,
@@ -457,12 +488,19 @@ export function serializeStateFor(room, playerId) {
   return {
     type: 'state',
     payload: {
-      room: { code: room.code, status: room.status, settings: room.settings, customTaboos: room.customTaboos },
+      room: {
+        code: room.code,
+        status: room.status,
+        settings: room.settings,
+        customTaboos: room.customTaboos,
+        log: room.log,
+      },
       me: self
         ? {
             id: self.id,
             name: self.name,
             isHost: self.isHost,
+            isSpectator: self.isSpectator,
             score: self.score,
             energy: self.energy,
             paused: self.paused,

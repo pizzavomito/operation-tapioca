@@ -6,6 +6,7 @@ import * as Home from './ui/home.js';
 import * as Lobby from './ui/lobby.js';
 import * as Mission from './ui/mission.js';
 import * as Dossier from './ui/dossier.js';
+import * as Spectator from './ui/spectator.js';
 import * as Debrief from './ui/debrief.js';
 import * as Validation from './ui/validation.js';
 
@@ -67,7 +68,7 @@ const socket = new GameSocket({
 });
 
 const actions = {
-  join: ({ name, roomCode }) => socket.send(C2S.JOIN, { name, roomCode }),
+  join: ({ name, roomCode, spectator }) => socket.send(C2S.JOIN, { name, roomCode, spectator }),
   start: () => socket.send(C2S.START, {}),
   updateSettings: (patch) => socket.send(C2S.SETTINGS_UPDATE, patch),
   addTaboo: (text) => socket.send(C2S.TABOO_ADD, { text }),
@@ -81,6 +82,7 @@ const actions = {
   setEnergy: (value) => socket.send(C2S.ENERGY_SET, { value }),
   sosRaise: () => socket.send(C2S.SOS_RAISE, {}),
   sosTake: (sosId, mode) => socket.send(C2S.SOS_TAKE, { sosId, mode }),
+  cheer: (emoji) => socket.send(C2S.CHEER, { emoji }),
   gameEnd: () => socket.send(C2S.GAME_END, {}),
   leave: () => {
     clearSession();
@@ -107,6 +109,18 @@ function dismissWitness(claimId) {
   render();
 }
 
+// Repli visuel pour les événements urgents (SOS, demande de témoin) : sur certains
+// navigateurs Android durcis (ROM confidentialité type e/OS), navigator.vibrate() est
+// silencieusement bloqué. Un pulse unique (pas un clignotement répété, §6 du PRD) sur le
+// bord de l'écran garantit un signal visible même sans haptique.
+function flashScreen(tone) {
+  appRoot.classList.remove('flash-accent', 'flash-danger');
+  // relance l'animation même si la précédente n'est pas finie
+  void appRoot.offsetWidth;
+  appRoot.classList.add(`flash-${tone}`);
+  setTimeout(() => appRoot.classList.remove(`flash-${tone}`), 700);
+}
+
 function handleMessage(msg) {
   const { type, payload } = msg;
   switch (type) {
@@ -124,11 +138,13 @@ function handleMessage(msg) {
 
     case S2C.WITNESS_REQUEST:
       vibrate(25);
+      flashScreen('accent');
       render(); // l'overlay se déduit de serverState.pendingWitnessRequests au prochain state, mais on rafraîchit déjà l'affichage
       break;
 
     case S2C.SOS_ALERT:
       vibrate([40, 80, 40, 80, 40]);
+      flashScreen('danger');
       render();
       break;
 
@@ -190,6 +206,10 @@ function handleNotify(payload) {
           : `${payload.targetName} conteste ton signalement.`
       );
       break;
+    case 'cheer':
+      vibrate(15);
+      showToast(`${payload.name} t'envoie ${payload.emoji}`);
+      break;
     default:
       break;
   }
@@ -199,7 +219,10 @@ function currentScreen() {
   if (!session || !serverState) return 'loading';
   const status = serverState.room.status;
   if (status === 'lobby') return 'lobby';
-  if (status === 'playing') return ui.view === 'dossier' ? 'dossier' : 'mission';
+  if (status === 'playing') {
+    if (serverState.me?.isSpectator) return 'spectator';
+    return ui.view === 'dossier' ? 'dossier' : 'mission';
+  }
   if (status === 'ended') return 'debrief';
   return 'loading';
 }
@@ -260,6 +283,7 @@ function renderScreen() {
   if (screen === 'lobby') return Lobby.render(screenRoot, ctx);
   if (screen === 'mission') return Mission.render(screenRoot, ctx);
   if (screen === 'dossier') return Dossier.render(screenRoot, ctx);
+  if (screen === 'spectator') return Spectator.render(screenRoot, ctx);
   if (screen === 'debrief') return Debrief.render(screenRoot, ctx);
 }
 
@@ -293,49 +317,62 @@ function renderToast() {
 
 let sosButtonEl = null;
 function renderSosButton() {
-  const shouldShow = serverState?.room?.status === 'playing';
+  // Un spectateur suit, ne joue pas : pas de batterie sociale à lui à gérer, pas de bouton
+  // pour en lever un — mais il peut toujours répondre au SOS de quelqu'un d'autre (overlay).
+  const shouldShow = serverState?.room?.status === 'playing' && !serverState.me?.isSpectator;
   if (!shouldShow) {
     if (sosButtonEl) { sosButtonEl.remove(); sosButtonEl = null; }
     return;
   }
-  if (sosButtonEl) return; // déjà monté, ses handlers restent valides via closures sur `actions`
-  sosButtonEl = h('<button class="sos-button" id="sos">SOS</button>');
-  document.body.appendChild(sosButtonEl);
+  const sosInProgress = !!serverState.sos; // quelqu'un — moi ou un autre — a déjà un SOS ouvert
+  if (!sosButtonEl) {
+    sosButtonEl = h('<button class="sos-button" id="sos">SOS</button>');
+    document.body.appendChild(sosButtonEl);
 
-  const SOS_LONGPRESS_MS = 1500;
-  let raf = null, start = null, fired = false;
-  const reset = () => {
-    if (raf) cancelAnimationFrame(raf);
-    raf = null; start = null; fired = false;
-    sosButtonEl.style.setProperty('--charge', '0%');
-    sosButtonEl.classList.remove('charging');
-  };
-  const tick = (ts) => {
-    if (start == null) start = ts;
-    const progress = Math.min(1, (ts - start) / SOS_LONGPRESS_MS);
-    sosButtonEl.style.setProperty('--charge', `${Math.round(progress * 100)}%`);
-    if (progress >= 1 && !fired) {
-      fired = true;
-      vibrate([30, 60, 30, 60, 30]);
-      actions.sosRaise();
-      reset();
-      return;
-    }
-    if (!fired) raf = requestAnimationFrame(tick);
-  };
-  sosButtonEl.addEventListener('pointerdown', (e) => {
-    e.preventDefault();
-    sosButtonEl.classList.add('charging');
-    raf = requestAnimationFrame(tick);
-  });
-  ['pointerup', 'pointercancel', 'pointerleave'].forEach((evt) => sosButtonEl.addEventListener(evt, reset));
+    const SOS_LONGPRESS_MS = 1500;
+    let raf = null, start = null, fired = false;
+    const reset = () => {
+      if (raf) cancelAnimationFrame(raf);
+      raf = null; start = null; fired = false;
+      sosButtonEl.style.setProperty('--charge', '0%');
+      sosButtonEl.classList.remove('charging');
+    };
+    const tick = (ts) => {
+      if (start == null) start = ts;
+      const progress = Math.min(1, (ts - start) / SOS_LONGPRESS_MS);
+      sosButtonEl.style.setProperty('--charge', `${Math.round(progress * 100)}%`);
+      if (progress >= 1 && !fired) {
+        fired = true;
+        vibrate([30, 60, 30, 60, 30]);
+        actions.sosRaise();
+        reset();
+        return;
+      }
+      if (!fired) raf = requestAnimationFrame(tick);
+    };
+    sosButtonEl.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      if (sosButtonEl.classList.contains('in-progress')) {
+        vibrate(10);
+        return; // un SOS est déjà ouvert, pas la peine de charger pour rien
+      }
+      sosButtonEl.classList.add('charging');
+      raf = requestAnimationFrame(tick);
+    });
+    ['pointerup', 'pointercancel', 'pointerleave'].forEach((evt) => sosButtonEl.addEventListener(evt, reset));
+  }
+  // Couleur distincte tant qu'un SOS est ouvert (le sien ou celui de quelqu'un d'autre) :
+  // avant, le bouton restait rouge alarme en permanence, sans dire qu'il ne servait à rien.
+  sosButtonEl.classList.toggle('in-progress', sosInProgress);
+  sosButtonEl.textContent = sosInProgress ? '…' : 'SOS';
 }
 
 // Barre d'onglets fixe (Mission / Dossier) : montée une fois comme le bouton SOS, jamais
 // dans le flux scrollable — plus besoin de scroller pour l'atteindre.
 let tabBarEl = null;
 function renderTabBar() {
-  const shouldShow = serverState?.room?.status === 'playing';
+  // Le spectateur a un seul écran (Suivi) : rien à basculer, pas de barre à afficher.
+  const shouldShow = serverState?.room?.status === 'playing' && !serverState.me?.isSpectator;
   if (!shouldShow) {
     if (tabBarEl) { tabBarEl.remove(); tabBarEl = null; }
     return;

@@ -142,6 +142,17 @@ select:focus { outline: 2px solid var(--accent); }
 }
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
 
+/* Repli visuel pour SOS / demande de témoin quand la vibration est indisponible ou bloquée
+   (certains navigateurs Android durcis). Un seul pulse, jamais répété : ce n'est pas un
+   clignotement (§6 du PRD l'interdit), juste un flash de bord qui attire l'oeil une fois. */
+@keyframes edge-pulse {
+  0% { box-shadow: inset 0 0 0 0 transparent; }
+  30% { box-shadow: inset 0 0 0 6px var(--pulse-color, var(--accent)); }
+  100% { box-shadow: inset 0 0 0 0 transparent; }
+}
+#app.flash-accent { animation: edge-pulse 0.7s ease-out; --pulse-color: var(--accent); }
+#app.flash-danger { animation: edge-pulse 0.7s ease-out; --pulse-color: var(--danger); }
+
 .brand {
   text-align: center;
   padding: 8px 0 0;
@@ -182,6 +193,16 @@ select:focus { outline: 2px solid var(--accent); }
   text-align: center;
   font-size: 1.6rem;
 }
+.checkbox-row {
+  min-height: var(--tap-min);
+  gap: 12px;
+  padding: 4px 2px;
+}
+.checkbox-row input[type="checkbox"] {
+  width: 22px; height: 22px; flex-shrink: 0;
+  accent-color: var(--accent);
+}
+.checkbox-row span { font-size: 0.9rem; color: var(--text-dim); }
 
 /* ---------- Lobby ---------- */
 .player-list { display: flex; flex-direction: column; gap: 8px; }
@@ -282,6 +303,14 @@ select:focus { outline: 2px solid var(--accent); }
 .sos-button.charging {
   background: conic-gradient(#fff var(--charge, 0%), var(--danger) 0);
 }
+/* Un SOS est déjà ouvert (le sien ou celui de quelqu'un d'autre) : couleur bien distincte
+   du rouge alarme, pour ne pas laisser croire qu'appuyer relance quelque chose. */
+.sos-button.in-progress {
+  background: var(--bg-elevated-2);
+  color: var(--accent);
+  border: 2px solid var(--accent);
+  box-shadow: none;
+}
 
 /* Barre d'onglets fixe (Mission / Dossier) : toujours atteignable, jamais besoin de scroller. */
 .tab-bar {
@@ -346,6 +375,19 @@ select:focus { outline: 2px solid var(--accent); }
   font-size: 0.9rem;
 }
 .history-row .status { font-size: 0.72rem; padding: 2px 8px; border-radius: 999px; }
+
+.log-row {
+  padding: 8px 12px; border-radius: var(--radius-sm);
+  background: var(--bg-elevated); border: 1px solid var(--border);
+  font-size: 0.85rem; color: var(--text-dim);
+}
+
+.cheer-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.cheer-btn {
+  flex-direction: column; gap: 4px;
+  min-height: 76px;
+}
+.cheer-emoji { font-size: 1.8rem; }
 .status-validated { background: var(--success-soft); color: var(--success); }
 .status-contamination { background: var(--accent-soft); color: var(--accent); }
 .status-expired { background: var(--bg-elevated-2); color: var(--text-dim); }

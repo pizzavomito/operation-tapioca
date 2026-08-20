@@ -75,6 +75,7 @@ export class RoomStore {
       claims: new Map(),
       tabooReports: new Map(),
       sos: null,
+      log: [], // fil d'événements de la partie, voir game.js#logEvent
     };
     this.rooms.set(code, room);
     return room;

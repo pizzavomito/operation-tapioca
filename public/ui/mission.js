@@ -1,7 +1,8 @@
 import { h, esc, levelTag, vibrate } from './components.js';
 
 export function render(root, ctx) {
-  const { me, players } = ctx.server;
+  const { me, players: allPlayers } = ctx.server;
+  const players = allPlayers.filter((p) => !p.isSpectator); // les spectateurs n'ont pas d'énergie sociale à afficher ici
   const mission = me.missionQueue[0] || null;
   const lastValidated = [...me.missionHistory].reverse().find((h) => h.status === 'validated');
   const contaminationTarget = mission?.id || lastValidated?.missionId || null;

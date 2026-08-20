@@ -97,6 +97,7 @@ wss.on('connection', (ws) => {
     if (player && player.ws === ws) {
       player.connected = false;
       player.ws = null;
+      game.logEvent(room, `💤 ${player.name} a perdu la connexion.`);
       broadcast(room, (targetId) =>
         targetId === playerId ? null : { type: S2C.NOTIFY, payload: { kind: 'disconnected', name: player.name } }
       );
@@ -117,6 +118,7 @@ function handleJoin(ws, payload) {
       player.connected = true;
       ws.meta = { roomCode: room.code, playerId };
       sendJSON(ws, { type: S2C.NOTIFY, payload: { kind: 'session', playerId, token: player.token, roomCode: room.code } });
+      game.logEvent(room, `👋 ${player.name} est de retour.`);
       broadcast(room, (targetId) =>
         targetId === playerId ? null : { type: S2C.NOTIFY, payload: { kind: 'reconnected', name: player.name } }
       );
@@ -126,6 +128,7 @@ function handleJoin(ws, payload) {
   }
 
   const cleanName = (name || '').trim().slice(0, 24) || 'Agent';
+  const isSpectator = !!payload.spectator;
 
   let room;
   let isHost = false;
@@ -141,7 +144,7 @@ function handleJoin(ws, payload) {
   }
 
   const playerId = isHost ? room.hostId : newId('p');
-  const player = game.createPlayer({ id: playerId, token: newToken(), name: cleanName, isHost });
+  const player = game.createPlayer({ id: playerId, token: newToken(), name: cleanName, isHost, isSpectator });
   player.ws = ws;
   room.players.set(playerId, player);
   room.tokenIndex.set(player.token, playerId);
@@ -149,6 +152,7 @@ function handleJoin(ws, payload) {
 
   ws.meta = { roomCode: room.code, playerId };
   sendJSON(ws, { type: S2C.NOTIFY, payload: { kind: 'session', playerId, token: player.token, roomCode: room.code } });
+  game.logEvent(room, isSpectator ? `👀 ${player.name} suit la partie.` : `👋 ${player.name} a rejoint la partie.`);
   broadcast(room, (targetId) =>
     targetId === playerId ? null : { type: S2C.NOTIFY, payload: { kind: 'joined', name: player.name } }
   );
@@ -159,7 +163,8 @@ function handleAction(ws, room, player, type, payload) {
     case C2S.START: {
       if (!player.isHost) return sendError(ws, "Seul l'hôte peut lancer l'opération.");
       if (room.status !== 'lobby') return sendError(ws, 'La partie est déjà lancée.');
-      if (room.players.size < 2) return sendError(ws, 'Il faut au moins 2 agents.');
+      const activeCount = [...room.players.values()].filter((p) => !p.isSpectator).length;
+      if (activeCount < 2) return sendError(ws, 'Il faut au moins 2 agents (les spectateurs ne comptent pas).');
       game.startGame(room, content);
       broadcast(room, (targetId) => {
         const p = room.players.get(targetId);
@@ -246,6 +251,12 @@ function handleAction(ws, room, player, type, payload) {
 
     case C2S.SOS_TAKE: {
       const res = game.sosTake(room, player, payload.sosId, payload.mode, broadcast);
+      if (res.error) sendError(ws, res.error);
+      break;
+    }
+
+    case C2S.CHEER: {
+      const res = game.sendCheer(room, player, payload.emoji, broadcast);
       if (res.error) sendError(ws, res.error);
       break;
     }

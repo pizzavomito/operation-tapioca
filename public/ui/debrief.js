@@ -42,7 +42,10 @@ export function render(root, ctx) {
         ` : ''}
       </div>
 
-      <p class="muted small center">Ton score final : <strong style="color:var(--accent)">${me.score}</strong></p>
+      ${me.isSpectator
+        ? '<p class="muted small center">Merci d\'avoir suivi l\'opération 💛</p>'
+        : `<p class="muted small center">Ton score final : <strong style="color:var(--accent)">${me.score}</strong></p>`
+      }
 
       <button class="btn btn-block" id="leave">Quitter l'opération</button>
     </div>

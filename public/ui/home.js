@@ -28,6 +28,10 @@ export function render(root, ctx) {
             <label for="code">Code de partie</label>
             <input id="code" type="text" maxlength="4" placeholder="ABCD" autocomplete="off" value="${esc(code)}" />
           </div>
+          <label class="row checkbox-row">
+            <input type="checkbox" id="spectator" ${ctx.ui.homeSpectator ? 'checked' : ''} />
+            <span>Je veux juste suivre (spectateur, pas de mission)</span>
+          </label>
         ` : ''}
         ${ctx.ui.joinError ? `<p class="small" style="color:var(--danger)">${esc(ctx.ui.joinError)}</p>` : ''}
         <button class="btn btn-primary btn-block" id="submit">
@@ -56,6 +60,9 @@ export function render(root, ctx) {
     });
   }
 
+  const spectatorInput = el.querySelector('#spectator');
+  spectatorInput?.addEventListener('change', () => ctx.setUI({ homeSpectator: spectatorInput.checked }, { silent: true }));
+
   el.querySelector('#submit').addEventListener('click', () => {
     const finalName = pseudoInput.value.trim();
     const finalCode = codeInput ? codeInput.value.trim() : '';
@@ -68,7 +75,11 @@ export function render(root, ctx) {
       return;
     }
     localStorage.setItem('tapioca:name', finalName);
-    ctx.actions.join({ name: finalName, roomCode: mode === 'join' ? finalCode : '' });
+    ctx.actions.join({
+      name: finalName,
+      roomCode: mode === 'join' ? finalCode : '',
+      spectator: mode === 'join' && !!spectatorInput?.checked,
+    });
   });
 
   root.replaceChildren(el);

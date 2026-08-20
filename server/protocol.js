@@ -21,6 +21,7 @@ export const C2S = {
   // non détaillées dans le tableau §7.1 du PRD mais requises pour le remplir fonctionnellement.
   SETTINGS_UPDATE: 'settings:update', // hôte, { missionQueueMax: 1-3 }
   TABOO_ADD: 'taboo:add', // hôte, { text }
+  CHEER: 'cheer', // spectateur, { emoji } — un des CHEER_EMOJIS ci-dessous
 };
 
 // Serveur -> client
@@ -45,6 +46,10 @@ export const SCORE = {
   MISSION_EXPIRED: 0,
   ENERGY_RECHARGE_ON_VALIDATION: 5,
 };
+
+// Encouragements du mode spectateur : ensemble fixe, jamais de texte libre
+// (on reste hors périmètre du chat, §9 du PRD).
+export const CHEER_EMOJIS = ['💪', '😘', '👏', '🔥'];
 
 export const WITNESS_WINDOW_MS = 3 * 60 * 1000; // 3 min
 export const SOS_LONGPRESS_MS = 1500;
