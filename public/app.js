@@ -229,7 +229,7 @@ function currentScreen() {
 }
 
 function buildCtx() {
-  return { server: serverState, ui, actions, setUI, genericTaboos, dismissWitness };
+  return { server: serverState, ui, actions, setUI, genericTaboos, dismissWitness, showToast };
 }
 
 function render() {

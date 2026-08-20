@@ -1,4 +1,4 @@
-import { h, esc } from './components.js';
+import { h, esc, vibrate } from './components.js';
 
 export function render(root, ctx) {
   const mode = ctx.ui.homeMode || 'join'; // 'join' | 'create'
@@ -40,6 +40,8 @@ export function render(root, ctx) {
       </div>
 
       <p class="muted small center">Aucune inscription. Le code de partie se scanne en QR une fois dans le salon.</p>
+
+      <button class="btn btn-ghost btn-block" id="test-vibration">🔊 Tester la vibration du téléphone</button>
     </div>
   `);
 
@@ -80,6 +82,15 @@ export function render(root, ctx) {
       roomCode: mode === 'join' ? finalCode : '',
       spectator: mode === 'join' && !!spectatorInput?.checked,
     });
+  });
+
+  el.querySelector('#test-vibration').addEventListener('click', () => {
+    if (!('vibrate' in navigator)) {
+      ctx.showToast('Pas d\'API vibration ici — limite du navigateur, rien à faire côté appli.');
+      return;
+    }
+    const accepted = vibrate(300);
+    ctx.showToast(accepted ? 'Vibration envoyée. Ça a bougé ?' : 'Vibration refusée par le navigateur.');
   });
 
   root.replaceChildren(el);

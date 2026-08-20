@@ -13,9 +13,14 @@ export function esc(str) {
 }
 
 // Retour haptique uniquement — zéro son, partout (§6 du PRD).
+// navigator.vibrate() renvoie true/false selon que le navigateur a accepté l'appel — utile
+// pour diagnostiquer (voir #test-vibration dans home.js) plutôt que d'échouer en silence.
 export function vibrate(pattern) {
-  if (navigator.vibrate) {
-    try { navigator.vibrate(pattern); } catch { /* ignore */ }
+  if (!('vibrate' in navigator)) return false;
+  try {
+    return navigator.vibrate(pattern);
+  } catch {
+    return false;
   }
 }
 
