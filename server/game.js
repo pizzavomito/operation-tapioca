@@ -517,25 +517,28 @@ export function sendChatMessage(room, player, text, broadcast) {
 // des points que si le défi aboutit. Il doit donc bien choisir — la bonne carte pour la
 // bonne personne — plutôt que spammer. Décliner reste toujours possible et silencieux,
 // aucune pénalité (même philosophie que le reste du jeu).
+//
+// C'est aussi le lanceur qui choisit la carte précise (plutôt qu'un tirage au hasard) et qui
+// valide que c'est fait (plutôt que la cible qui s'auto-déclare) : un défi direct est un moment
+// que le lanceur observe en personne, il est donc le mieux placé pour trancher — comme pour
+// les défis ouverts, où c'est déjà lui qui désigne le gagnant.
 
 function remainingCooldown(lastAt, cooldownMs) {
   const remaining = (lastAt || 0) + cooldownMs - Date.now();
   return remaining > 0 ? remaining : 0;
 }
 
-export function sendDirectChallenge(room, launcher, targetId, level, content, broadcast) {
+export function sendDirectChallenge(room, launcher, targetId, cardId, content, broadcast) {
   if (!room.settings.challengesEnabled) return { error: 'Les défis sont désactivés pour cette opération.' };
   if (launcher.isSpectator) return { error: 'Un spectateur ne peut pas lancer de défi.' };
-  if (level !== 'leger' && level !== 'corse') return { error: 'Niveau de défi invalide.' };
   const target = room.players.get(targetId);
   if (!target || target.isSpectator) return { error: 'Cible introuvable.' };
   if (target.id === launcher.id) return { error: 'Tu ne peux pas te lancer un défi à toi-même.' };
   const wait = remainingCooldown(launcher.lastChallengeAt, CHALLENGE_COOLDOWN_MS);
   if (wait > 0) return { error: `Encore ${Math.ceil(wait / 60000)} min avant de pouvoir relancer un défi.` };
 
-  const deck = content.challenges.filter((c) => c.level === level);
-  const card = deck[Math.floor(Math.random() * deck.length)];
-  if (!card) return { error: 'Deck de défis vide.' };
+  const card = content.challenges.find((c) => c.id === cardId);
+  if (!card) return { error: 'Carte de défi introuvable.' };
 
   launcher.lastChallengeAt = Date.now();
   const challengeId = newId('chal');
@@ -544,7 +547,7 @@ export function sendDirectChallenge(room, launcher, targetId, level, content, br
     id: challengeId,
     fromId: launcher.id,
     targetId,
-    level,
+    level: card.level,
     text: card.text,
     status: 'pending', // pending (à accepter) -> accepted (à faire) -> supprimé une fois résolu
     createdAt: Date.now(),
@@ -553,7 +556,7 @@ export function sendDirectChallenge(room, launcher, targetId, level, content, br
 
   broadcast(room, (tid) =>
     tid === targetId
-      ? { type: S2C.CHALLENGE_REQUEST, payload: { challengeId, fromName: launcher.name, level, text: card.text } }
+      ? { type: S2C.CHALLENGE_REQUEST, payload: { challengeId, fromName: launcher.name, level: card.level, text: card.text } }
       : null
   );
   return { challengeId };
@@ -581,23 +584,23 @@ export function respondChallenge(room, player, challengeId, accept, broadcast) {
   return {};
 }
 
-export function completeChallenge(room, player, challengeId, broadcast) {
+export function validateChallenge(room, launcher, challengeId, broadcast) {
   const challenge = room.challenges.get(challengeId);
   if (!challenge || challenge.status !== 'accepted') return { error: "Ce défi n'est plus disponible." };
-  if (challenge.targetId !== player.id) return { error: 'Ce défi ne te concerne pas.' };
+  if (challenge.fromId !== launcher.id) return { error: "Seul l'agent qui a lancé ce défi peut le valider." };
   clearTimeout(challenge.timer);
 
-  const launcher = room.players.get(challenge.fromId);
+  const target = room.players.get(challenge.targetId);
   const targetPts = challenge.level === 'corse' ? SCORE.CHALLENGE_CORSE_TARGET : SCORE.CHALLENGE_LEGER_TARGET;
   const launcherPts = challenge.level === 'corse' ? SCORE.CHALLENGE_CORSE_LAUNCHER : SCORE.CHALLENGE_LEGER_LAUNCHER;
-  player.score += targetPts;
-  if (launcher) launcher.score += launcherPts;
-  logEvent(room, `🎲 ${player.name} a relevé le défi de ${launcher ? launcher.name : '?'} : « ${challenge.text} »`);
+  if (target) target.score += targetPts;
+  launcher.score += launcherPts;
+  logEvent(room, `🎲 ${target ? target.name : '?'} a relevé le défi de ${launcher.name} : « ${challenge.text} »`);
 
   room.challenges.delete(challengeId);
   broadcast(room, (tid) =>
-    tid === challenge.fromId
-      ? { type: S2C.NOTIFY, payload: { kind: 'challenge-done', name: player.name } }
+    tid === challenge.targetId
+      ? { type: S2C.NOTIFY, payload: { kind: 'challenge-done', name: launcher.name } }
       : null
   );
   return {};
@@ -752,6 +755,21 @@ export function serializeStateFor(room, playerId) {
         status: myChallengeRaw.status,
       }
     : null;
+  // Le défi que j'ai lancé moi-même : c'est moi qui verrai le bouton « C'est fait » une fois
+  // accepté, pas la cible (voir commentaire plus haut).
+  const myLaunchedChallengeRaw = self?.isSpectator
+    ? null
+    : [...room.challenges.values()].find((c) => c.fromId === playerId);
+  const myLaunchedChallenge = myLaunchedChallengeRaw
+    ? {
+        id: myLaunchedChallengeRaw.id,
+        targetId: myLaunchedChallengeRaw.targetId,
+        targetName: room.players.get(myLaunchedChallengeRaw.targetId)?.name,
+        level: myLaunchedChallengeRaw.level,
+        text: myLaunchedChallengeRaw.text,
+        status: myLaunchedChallengeRaw.status,
+      }
+    : null;
   const openChallenges = self?.isSpectator
     ? []
     : [...room.openChallenges.values()]
@@ -788,6 +806,7 @@ export function serializeStateFor(room, playerId) {
             sosHandled: self.sosHandled,
             contaminations: self.contaminations,
             myChallenge: myChallenge || null,
+            myLaunchedChallenge: myLaunchedChallenge || null,
             nextChallengeAt: (self.lastChallengeAt || 0) + CHALLENGE_COOLDOWN_MS,
             nextOpenChallengeAt: (self.lastOpenChallengeAt || 0) + OPEN_CHALLENGE_COOLDOWN_MS,
           }

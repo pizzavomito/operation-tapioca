@@ -34,6 +34,7 @@ document.body.append(overlayRoot, toastRoot, flashRoot);
 let session = loadSession();
 let serverState = null; // dernier payload de 'state'
 let genericTaboos = [];
+let challengeDeck = []; // deck de défis directs (§ demande : le lanceur choisit la carte à vue)
 let connectionStatus = 'connecting';
 let toastTimer = null;
 
@@ -99,9 +100,9 @@ const actions = {
   sosTake: (sosId, mode) => socket.send(C2S.SOS_TAKE, { sosId, mode }),
   cheer: (emoji) => socket.send(C2S.CHEER, { emoji }),
   sendChat: (text) => socket.send(C2S.CHAT_SEND, { text }),
-  sendChallenge: (targetId, level) => socket.send(C2S.CHALLENGE_SEND, { targetId, level }),
+  sendChallenge: (targetId, cardId) => socket.send(C2S.CHALLENGE_SEND, { targetId, cardId }),
   respondChallenge: (challengeId, accept) => socket.send(C2S.CHALLENGE_RESPOND, { challengeId, accept }),
-  challengeDone: (challengeId) => socket.send(C2S.CHALLENGE_DONE, { challengeId }),
+  validateChallenge: (challengeId) => socket.send(C2S.CHALLENGE_VALIDATE, { challengeId }),
   sendOpenChallenge: () => socket.send(C2S.OPEN_CHALLENGE_SEND, {}),
   awardOpenChallenge: (openChallengeId, winnerId) => socket.send(C2S.OPEN_CHALLENGE_AWARD, { openChallengeId, winnerId }),
   gameEnd: () => socket.send(C2S.GAME_END, {}),
@@ -263,7 +264,7 @@ function handleNotify(payload) {
       break;
     case 'challenge-done':
       vibrate(15);
-      showToast(`${payload.name} a relevé ton défi !`);
+      showToast(`${payload.name} a validé ton défi !`);
       break;
     case 'open-challenge-won':
       vibrate([15, 40, 15]);
@@ -293,7 +294,7 @@ function currentScreen() {
 }
 
 function buildCtx() {
-  return { server: serverState, ui, actions, setUI, genericTaboos, dismissWitness, showToast };
+  return { server: serverState, ui, actions, setUI, genericTaboos, challengeDeck, dismissWitness, showToast };
 }
 
 function render() {
@@ -320,7 +321,9 @@ function renderStatusStrip() {
   if (!serverState || serverState.room.status !== 'playing') return;
   const witnessCount = (serverState.pendingWitnessRequests || []).length;
   const sos = serverState.sos && serverState.sos.raisedBy !== serverState.me.id ? serverState.sos : null;
-  const activeChallenge = serverState.me.myChallenge && serverState.me.myChallenge.status === 'accepted' ? serverState.me.myChallenge : null;
+  const activeChallenge =
+    (serverState.me.myChallenge && serverState.me.myChallenge.status === 'accepted' ? serverState.me.myChallenge : null) ||
+    (serverState.me.myLaunchedChallenge && serverState.me.myLaunchedChallenge.status === 'accepted' ? serverState.me.myLaunchedChallenge : null);
   if (!witnessCount && !sos && !activeChallenge) return;
 
   const pills = [];
@@ -487,7 +490,7 @@ function renderTabBar() {
   const challengesTab = tabBarEl.querySelector('#tab-challenges');
   if (challengesTab) {
     challengesTab.classList.toggle('active', ui.view === 'challenges');
-    const hasChallengeToHandle = !!(serverState.me?.myChallenge?.status === 'accepted')
+    const hasChallengeToHandle = !!(serverState.me?.myLaunchedChallenge?.status === 'accepted')
       || (serverState.openChallenges || []).some((o) => o.fromId === serverState.me?.id);
     tabBarEl.querySelector('#challenges-badge').hidden = ui.view === 'challenges' || !hasChallengeToHandle;
   }
@@ -579,6 +582,12 @@ async function boot() {
     genericTaboos = await res.json();
   } catch {
     genericTaboos = [];
+  }
+  try {
+    const res = await fetch('/challenges.json');
+    challengeDeck = await res.json();
+  } catch {
+    challengeDeck = [];
   }
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js').catch(() => {});

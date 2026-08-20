@@ -27,9 +27,9 @@ export const C2S = {
   PUSH_SUBSCRIBE: 'push:subscribe', // { subscription } — objet PushSubscription.toJSON()
   VISIBILITY: 'visibility', // { visible: boolean } — Page Visibility API côté client
   CHAT_SEND: 'chat:send', // { text } — chat de partie, agents et spectateurs
-  CHALLENGE_SEND: 'challenge:send', // { targetId, level: 'leger'|'corse' } — carte tirée au hasard côté serveur
+  CHALLENGE_SEND: 'challenge:send', // { targetId, cardId } — carte choisie par le lanceur dans le deck
   CHALLENGE_RESPOND: 'challenge:respond', // { challengeId, accept: boolean }
-  CHALLENGE_DONE: 'challenge:done', // { challengeId } — auto-déclaration, comme les tabous
+  CHALLENGE_VALIDATE: 'challenge:validate', // { challengeId } — le lanceur constate et valide, pas la cible
   OPEN_CHALLENGE_SEND: 'openChallenge:send', // {} — question tirée au hasard côté serveur
   OPEN_CHALLENGE_AWARD: 'openChallenge:award', // { openChallengeId, winnerId: string|null }
 };

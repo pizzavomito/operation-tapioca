@@ -23,6 +23,8 @@ app.use(express.static(PUBLIC_DIR));
 app.get('/protocol.js', (req, res) => res.sendFile(path.join(__dirname, 'protocol.js')));
 // Le deck de tabous génériques est une connaissance commune (§4.3) : seule l'attribution par joueur est secrète.
 app.get('/taboos.json', (req, res) => res.sendFile(path.join(__dirname, 'data', 'taboos.json')));
+// Le deck de défis directs est une connaissance commune : le lanceur choisit la carte à vue (§ demande).
+app.get('/challenges.json', (req, res) => res.sendFile(path.join(__dirname, 'data', 'challenges.json')));
 // Clé publique VAPID pour l'abonnement Web Push côté client (notifications même app en arrière-plan).
 app.get('/push/vapid-public-key', (req, res) => res.type('text/plain').send(push.getPublicKey()));
 
@@ -327,7 +329,7 @@ function handleAction(ws, room, player, type, payload) {
 
     case C2S.CHALLENGE_SEND: {
       if (room.status !== 'playing') return sendError(ws, "L'opération n'est pas en cours.");
-      const res = game.sendDirectChallenge(room, player, payload.targetId, payload.level, content, broadcast);
+      const res = game.sendDirectChallenge(room, player, payload.targetId, payload.cardId, content, broadcast);
       if (res.error) sendError(ws, res.error);
       break;
     }
@@ -338,8 +340,8 @@ function handleAction(ws, room, player, type, payload) {
       break;
     }
 
-    case C2S.CHALLENGE_DONE: {
-      const res = game.completeChallenge(room, player, payload.challengeId, broadcast);
+    case C2S.CHALLENGE_VALIDATE: {
+      const res = game.validateChallenge(room, player, payload.challengeId, broadcast);
       if (res.error) sendError(ws, res.error);
       break;
     }
