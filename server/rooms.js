@@ -76,6 +76,7 @@ export class RoomStore {
       tabooReports: new Map(),
       sos: null,
       log: [], // fil d'événements de la partie, voir game.js#logEvent
+      chat: [], // messages du chat de partie, agents et spectateurs
     };
     this.rooms.set(code, room);
     return room;
@@ -136,6 +137,7 @@ export class RoomStore {
           // Rétrocompatibilité : un snapshot pris avant l'ajout d'un champ ne l'a pas.
           // Sans ce filet, un ancien snapshot fait planter le serveur en boucle au redémarrage.
           log: r.log || [],
+          chat: r.chat || [],
           players: new Map(
             r.players.map((p) => [
               p.id,

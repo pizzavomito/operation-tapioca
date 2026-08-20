@@ -78,6 +78,8 @@ function maybeSendPush(player, extra) {
     notif = { title: 'SOS Batterie 🆘', body: `${extra.payload.raisedByName} a besoin d'air.`, tag: 'sos' };
   } else if (extra.type === S2C.WITNESS_REQUEST) {
     notif = { title: 'On a besoin de toi', body: `${extra.payload.requesterName} réclame un témoin.`, tag: 'witness' };
+  } else if (extra.type === S2C.CHAT_MESSAGE) {
+    notif = { title: extra.payload.name, body: extra.payload.text, tag: 'chat' };
   }
   if (!notif) return;
   push.sendPush(player.pushSubscription, notif).then(({ gone }) => {
@@ -122,7 +124,6 @@ wss.on('connection', (ws) => {
       player.connected = false;
       player.ws = null;
       player.visible = false; // plus de connexion active : le push est le seul moyen de le joindre
-      game.logEvent(room, `💤 ${player.name} a perdu la connexion.`);
       broadcast(room, (targetId) =>
         targetId === playerId ? null : { type: S2C.NOTIFY, payload: { kind: 'disconnected', name: player.name } }
       );
@@ -144,7 +145,6 @@ function handleJoin(ws, payload) {
       player.visible = true; // corrigé sous peu par le premier message "visibility" du client si besoin
       ws.meta = { roomCode: room.code, playerId };
       sendJSON(ws, { type: S2C.NOTIFY, payload: { kind: 'session', playerId, token: player.token, roomCode: room.code } });
-      game.logEvent(room, `👋 ${player.name} est de retour.`);
       broadcast(room, (targetId) =>
         targetId === playerId ? null : { type: S2C.NOTIFY, payload: { kind: 'reconnected', name: player.name } }
       );
@@ -290,6 +290,12 @@ function handleAction(ws, room, player, type, payload) {
 
     case C2S.CHEER: {
       const res = game.sendCheer(room, player, payload.emoji, broadcast);
+      if (res.error) sendError(ws, res.error);
+      break;
+    }
+
+    case C2S.CHAT_SEND: {
+      const res = game.sendChatMessage(room, player, payload.text, broadcast);
       if (res.error) sendError(ws, res.error);
       break;
     }

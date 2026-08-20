@@ -1,4 +1,5 @@
 import { h, esc, vibrate } from './components.js';
+import { renderMessages as renderChatMessages } from './chat.js';
 import { CHEER_EMOJIS } from '/protocol.js';
 
 const CHEER_LABEL = { '💪': 'Courage', '😘': 'Bisou', '👏': 'Bravo', '🔥': 'Vas-y' };
@@ -54,6 +55,15 @@ export function render(root, ctx) {
       </div>
 
       <div class="card">
+        <h3 style="margin-bottom:10px;">Chat</h3>
+        <div class="chat-messages chat-messages-inline" id="spec-chat">${renderChatMessages(room.chat, me.id)}</div>
+        <form class="row" id="spec-chat-form" style="margin-top:10px;">
+          <input type="text" id="spec-chat-text" maxlength="500" placeholder="Écrire un message…" autocomplete="off" style="flex:1;" />
+          <button class="btn btn-primary" type="submit" style="min-height:56px;">Envoyer</button>
+        </form>
+      </div>
+
+      <div class="card">
         <h3 style="margin-bottom:10px;">Journal</h3>
         <div class="history-list">
           ${log.length === 0 ? '<p class="muted small">Rien pour l\'instant.</p>' : ''}
@@ -72,5 +82,17 @@ export function render(root, ctx) {
     });
   });
 
+  el.querySelector('#spec-chat-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const input = el.querySelector('#spec-chat-text');
+    const text = input.value.trim();
+    if (!text) return;
+    ctx.actions.sendChat(text);
+    input.value = '';
+  });
+
   root.replaceChildren(el);
+  const chatBox = el.querySelector('#spec-chat');
+  chatBox.scrollTop = chatBox.scrollHeight;
+  ctx.setUI({ chatSeenCount: (room.chat || []).length }, { silent: true });
 }

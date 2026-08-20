@@ -25,6 +25,7 @@ export const C2S = {
   CHEER: 'cheer', // spectateur, { emoji } — un des CHEER_EMOJIS ci-dessous
   PUSH_SUBSCRIBE: 'push:subscribe', // { subscription } — objet PushSubscription.toJSON()
   VISIBILITY: 'visibility', // { visible: boolean } — Page Visibility API côté client
+  CHAT_SEND: 'chat:send', // { text } — chat de partie, agents et spectateurs
 };
 
 // Serveur -> client
@@ -33,6 +34,7 @@ export const S2C = {
   MISSION_NEW: 'mission:new',
   WITNESS_REQUEST: 'witness:request',
   SOS_ALERT: 'sos:alert',
+  CHAT_MESSAGE: 'chat:message',
   NOTIFY: 'notify',
   ERROR: 'error',
   PING: 'ping',
@@ -50,8 +52,7 @@ export const SCORE = {
   ENERGY_RECHARGE_ON_VALIDATION: 5,
 };
 
-// Encouragements du mode spectateur : ensemble fixe, jamais de texte libre
-// (on reste hors périmètre du chat, §9 du PRD).
+// Encouragements du mode spectateur : ensemble fixe et rapide, en plus du chat texte.
 export const CHEER_EMOJIS = ['💪', '😘', '👏', '🔥'];
 
 export const WITNESS_WINDOW_MS = 3 * 60 * 1000; // 3 min
@@ -59,3 +60,5 @@ export const SOS_LONGPRESS_MS = 1500;
 export const ENERGY_LOW_THRESHOLD = 25;
 export const SNAPSHOT_INTERVAL_MS = 30 * 1000;
 export const PING_INTERVAL_MS = 25 * 1000;
+export const CHAT_MAX_LENGTH = 500;
+export const CHAT_MAX_HISTORY = 200;

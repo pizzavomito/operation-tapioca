@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { newId, shuffle } from './rooms.js';
-import { S2C, SCORE, WITNESS_WINDOW_MS, ENERGY_LOW_THRESHOLD, CHEER_EMOJIS } from './protocol.js';
+import { S2C, SCORE, WITNESS_WINDOW_MS, ENERGY_LOW_THRESHOLD, CHEER_EMOJIS, CHAT_MAX_LENGTH, CHAT_MAX_HISTORY } from './protocol.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -434,6 +434,20 @@ export function sendCheer(room, spectator, emoji, broadcast) {
   return {};
 }
 
+// ---------- Chat ----------
+
+export function sendChatMessage(room, player, text, broadcast) {
+  const trimmed = (text || '').trim().slice(0, CHAT_MAX_LENGTH);
+  if (!trimmed) return { error: 'Message vide.' };
+  const message = { id: newId('chat'), playerId: player.id, name: player.name, isSpectator: player.isSpectator, text: trimmed, ts: Date.now() };
+  room.chat.push(message);
+  if (room.chat.length > CHAT_MAX_HISTORY) room.chat.shift();
+  broadcast(room, (targetId) =>
+    targetId === player.id ? null : { type: S2C.CHAT_MESSAGE, payload: { name: player.name, text: trimmed } }
+  );
+  return {};
+}
+
 // ---------- Débriefing ----------
 
 export function endGame(room) {
@@ -509,6 +523,7 @@ export function serializeStateFor(room, playerId) {
         settings: room.settings,
         customTaboos: room.customTaboos,
         log: room.log,
+        chat: room.chat,
       },
       me: self
         ? {

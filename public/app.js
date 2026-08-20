@@ -7,6 +7,7 @@ import * as Lobby from './ui/lobby.js';
 import * as Mission from './ui/mission.js';
 import * as Dossier from './ui/dossier.js';
 import * as Spectator from './ui/spectator.js';
+import * as Chat from './ui/chat.js';
 import * as Debrief from './ui/debrief.js';
 import * as Validation from './ui/validation.js';
 
@@ -41,6 +42,7 @@ let ui = {
   view: 'mission', // sous-écran quand la partie est en cours : mission | dossier
   dismissedSosId: null,
   dismissedClaimIds: new Set(), // "Pas entendu" : fermeture locale, le serveur ne fait rien exprès
+  chatSeenCount: 0, // nombre de messages déjà vus, pour le badge "non lu" sur l'onglet Chat
   toast: null,
 };
 
@@ -88,6 +90,7 @@ const actions = {
   sosRaise: () => socket.send(C2S.SOS_RAISE, {}),
   sosTake: (sosId, mode) => socket.send(C2S.SOS_TAKE, { sosId, mode }),
   cheer: (emoji) => socket.send(C2S.CHEER, { emoji }),
+  sendChat: (text) => socket.send(C2S.CHAT_SEND, { text }),
   gameEnd: () => socket.send(C2S.GAME_END, {}),
   leave: () => {
     clearSession();
@@ -151,6 +154,15 @@ function handleMessage(msg) {
       vibrate([40, 80, 40, 80, 40]);
       flashScreen('danger');
       render();
+      break;
+
+    case S2C.CHAT_MESSAGE:
+      vibrate(15);
+      // Sur l'onglet Chat, le message arrive déjà visible via le prochain state ; ailleurs
+      // (ou en spectateur, qui n'a pas d'onglet dédié), un toast suffit à prévenir.
+      if (ui.view !== 'chat' || serverState?.me?.isSpectator) {
+        showToast(`${payload.name} : ${payload.text}`.slice(0, 90));
+      }
       break;
 
     case S2C.NOTIFY:
@@ -228,7 +240,9 @@ function currentScreen() {
   if (status === 'lobby') return 'lobby';
   if (status === 'playing') {
     if (serverState.me?.isSpectator) return 'spectator';
-    return ui.view === 'dossier' ? 'dossier' : 'mission';
+    if (ui.view === 'dossier') return 'dossier';
+    if (ui.view === 'chat') return 'chat';
+    return 'mission';
   }
   if (status === 'ended') return 'debrief';
   return 'loading';
@@ -246,6 +260,7 @@ function render() {
   renderToast();
   renderSosButton();
   renderTabBar();
+  renderChatBar();
 }
 
 function renderBanner() {
@@ -290,6 +305,7 @@ function renderScreen() {
   if (screen === 'lobby') return Lobby.render(screenRoot, ctx);
   if (screen === 'mission') return Mission.render(screenRoot, ctx);
   if (screen === 'dossier') return Dossier.render(screenRoot, ctx);
+  if (screen === 'chat') return Chat.render(screenRoot, ctx);
   if (screen === 'spectator') return Spectator.render(screenRoot, ctx);
   if (screen === 'debrief') return Debrief.render(screenRoot, ctx);
 }
@@ -389,14 +405,51 @@ function renderTabBar() {
       <div class="tab-bar">
         <button class="btn" id="tab-mission">Mission</button>
         <button class="btn" id="tab-dossier">Dossier</button>
+        <button class="btn" id="tab-chat">Chat<span class="tab-badge" id="chat-badge" hidden></span></button>
       </div>
     `);
     tabBarEl.querySelector('#tab-mission').addEventListener('click', () => setUI({ view: 'mission' }));
     tabBarEl.querySelector('#tab-dossier').addEventListener('click', () => setUI({ view: 'dossier' }));
+    tabBarEl.querySelector('#tab-chat').addEventListener('click', () => setUI({ view: 'chat' }));
     document.body.appendChild(tabBarEl);
   }
-  tabBarEl.querySelector('#tab-mission').classList.toggle('active', ui.view !== 'dossier');
+  tabBarEl.querySelector('#tab-mission').classList.toggle('active', ui.view !== 'dossier' && ui.view !== 'chat');
   tabBarEl.querySelector('#tab-dossier').classList.toggle('active', ui.view === 'dossier');
+  tabBarEl.querySelector('#tab-chat').classList.toggle('active', ui.view === 'chat');
+  const unread = Math.max(0, (serverState.room.chat || []).length - (ui.chatSeenCount || 0));
+  tabBarEl.querySelector('#chat-badge').hidden = ui.view === 'chat' || unread === 0;
+}
+
+// Bande de saisie fixe, juste au-dessus de la barre d'onglets — comme le bouton SOS,
+// toujours atteignable sans avoir à scroller jusqu'en bas des messages.
+let chatBarEl = null;
+function renderChatBar() {
+  const shouldShow = serverState?.room?.status === 'playing' && !serverState.me?.isSpectator && ui.view === 'chat';
+  // Le bouton SOS et les toasts flottent normalement juste au-dessus de la barre d'onglets ;
+  // quand la bande de saisie du chat s'ajoute par-dessus, ils doivent monter encore plus haut
+  // pour ne pas se chevaucher (voir style.css : body.chatbar-visible).
+  document.body.classList.toggle('chatbar-visible', shouldShow);
+  if (!shouldShow) {
+    if (chatBarEl) { chatBarEl.remove(); chatBarEl = null; }
+    return;
+  }
+  if (chatBarEl) return; // déjà monté, ses handlers restent valides
+  chatBarEl = h(`
+    <form class="chat-input-bar" id="chat-form">
+      <input type="text" id="chat-text" maxlength="500" placeholder="Écrire un message…" autocomplete="off" />
+      <button class="btn btn-primary" type="submit">Envoyer</button>
+    </form>
+  `);
+  document.body.appendChild(chatBarEl);
+  chatBarEl.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const input = chatBarEl.querySelector('#chat-text');
+    const text = input.value.trim();
+    if (!text) return;
+    actions.sendChat(text);
+    input.value = '';
+    input.focus();
+  });
 }
 
 // Notifications push : réveille le téléphone même page en arrière-plan ou fermée — chose que

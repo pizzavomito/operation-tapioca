@@ -17,6 +17,7 @@
   --radius: 18px;
   --radius-sm: 12px;
   --tabbar-h: 72px; /* barre d'onglets fixe, hors safe-area */
+  --chatbar-h: 64px; /* bande de saisie du chat, empilée juste au-dessus de la barre d'onglets */
   color-scheme: dark;
 }
 
@@ -332,11 +333,73 @@ select:focus { outline: 2px solid var(--accent); }
   border-top: 1px solid var(--border);
   z-index: 30;
 }
-.tab-bar .btn { flex: 1; }
+.tab-bar .btn { flex: 1; position: relative; }
 .tab-bar .btn.active { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.tab-badge {
+  position: absolute; top: 4px; right: 10px;
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--danger);
+}
 
 /* Réserve la place de la barre fixe en bas du contenu défilant, pour que rien ne soit masqué. */
 .screen-with-tabbar { padding-bottom: calc(var(--tabbar-h) + 12px); }
+/* Écran Chat : en plus de la barre d'onglets, une bande de saisie fixe flotte au-dessus. */
+.screen-with-chatbar { padding-bottom: calc(var(--tabbar-h) + var(--chatbar-h) + 16px); }
+
+.chat-input-bar {
+  position: fixed;
+  left: 0; right: 0;
+  bottom: var(--tabbar-h);
+  display: flex; gap: 8px;
+  padding: 10px max(16px, env(safe-area-inset-right)) 10px max(16px, env(safe-area-inset-left));
+  background: var(--bg-elevated);
+  border-top: 1px solid var(--border);
+  z-index: 30;
+}
+.chat-input-bar input {
+  flex: 1;
+  min-height: 44px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-elevated-2);
+  color: var(--text);
+  padding: 0 14px;
+  font-size: 0.95rem;
+}
+.chat-input-bar input:focus { outline: 2px solid var(--accent); }
+.chat-input-bar .btn { min-height: 44px; padding: 0 18px; }
+
+.chat-messages {
+  display: flex; flex-direction: column; gap: 8px;
+}
+.chat-messages-inline {
+  max-height: 260px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+.chat-msg {
+  align-self: flex-start;
+  max-width: 82%;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated); border: 1px solid var(--border);
+}
+.chat-msg.mine {
+  align-self: flex-end;
+  background: var(--accent-soft); border-color: var(--accent);
+}
+.chat-msg-name { font-size: 0.72rem; color: var(--text-dim); margin-bottom: 2px; }
+.chat-msg.mine .chat-msg-name { color: var(--accent); }
+.chat-msg-text { font-size: 0.92rem; word-break: break-word; white-space: pre-wrap; }
+
+/* Sur l'écran Chat, la bande de saisie s'ajoute au-dessus de la barre d'onglets : le SOS et
+   les toasts doivent monter encore plus haut pour ne pas se faire recouvrir. */
+body.chatbar-visible .sos-button {
+  bottom: calc(var(--tabbar-h) + var(--chatbar-h) + max(14px, env(safe-area-inset-bottom)));
+}
+body.chatbar-visible .toast {
+  bottom: calc(var(--tabbar-h) + var(--chatbar-h) + max(14px, env(safe-area-inset-bottom)));
+}
 
 /* ---------- Overlays plein écran (§6 Validation) ---------- */
 .overlay {
