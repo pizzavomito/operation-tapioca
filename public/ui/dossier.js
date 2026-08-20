@@ -1,12 +1,15 @@
 import { h, esc, levelTag } from './components.js';
 
-const STATUS_LABEL = { validated: 'Validée', expired: 'Expirée', skipped: 'Passée' };
+const STATUS_LABEL = { validated: 'Validée', contamination: 'Contamination', expired: 'Expirée', skipped: 'Passée' };
+const REPORT_STATUS_LABEL = { pending: 'En attente', confirmed: 'Confirmé', rejected: 'Contesté' };
 
 export function render(root, ctx) {
   const { me, players, room } = ctx.server;
   const fullDeck = [...ctx.genericTaboos, ...room.customTaboos];
   const tabooText = (id) => fullDeck.find((t) => t.id === id)?.text || '(formule inconnue)';
   const others = players.filter((p) => p.id !== me.id);
+  const incidents = me.tabooIncidents || [];
+  const reports = me.reportsMade || [];
 
   const el = h(`
     <div class="screen" style="gap:16px;">
@@ -47,8 +50,33 @@ export function render(root, ctx) {
           ${me.missionHistory.slice().reverse().map((h) => `
             <div class="history-row">
               ${h.level ? levelTag(h.level) : ''}
-              <span style="flex:1;">${esc(h.text || '')}</span>
+              <div style="flex:1;">
+                <div>${esc(h.text || '')}</div>
+                ${h.validatedBy?.length ? `<div class="muted small">Validée par ${esc(h.validatedBy.join(', '))}</div>` : ''}
+              </div>
               <span class="status status-${h.status}">${STATUS_LABEL[h.status] || h.status}</span>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 style="margin-bottom:10px;">Tabous et signalements</h3>
+        <div class="history-list">
+          ${incidents.length === 0 && reports.length === 0 ? '<p class="muted small">Rien à signaler pour l\'instant.</p>' : ''}
+          ${incidents.slice().reverse().map((inc) => `
+            <div class="history-row">
+              <div style="flex:1;">${esc(tabooText(inc.tabooId))}</div>
+              <span class="status status-expired">${inc.type === 'self' ? 'Auto-déclaré' : 'Signalé'}</span>
+            </div>
+          `).join('')}
+          ${reports.slice().reverse().map((r) => `
+            <div class="history-row">
+              <div style="flex:1;">
+                <div class="muted small">Toi → ${esc(r.targetName)}</div>
+                <div>${esc(tabooText(r.tabooId))}</div>
+              </div>
+              <span class="status status-${r.status === 'confirmed' ? 'validated' : r.status === 'rejected' ? 'expired' : 'skipped'}">${REPORT_STATUS_LABEL[r.status] || r.status}</span>
             </div>
           `).join('')}
         </div>

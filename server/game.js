@@ -28,6 +28,7 @@ export function createPlayer({ id, token, name, isHost }) {
     missionHistory: [],
     taboos: [],
     tabooIncidents: [],
+    reportsMade: [],
     sosHandled: 0,
     contaminations: 0,
   };
@@ -186,6 +187,9 @@ export function witnessVote(room, voter, claimId, vote, broadcast) {
   clearTimeout(claim.timer);
   claim.status = 'validated';
   const requester = room.players.get(claim.playerId);
+  const witnessNames = Object.keys(claim.votes)
+    .map((id) => room.players.get(id)?.name)
+    .filter(Boolean);
   if (requester) {
     if (claim.kind === 'mission') {
       requester.score += SCORE.MISSION_VALIDATED;
@@ -197,12 +201,21 @@ export function witnessVote(room, voter, claimId, vote, broadcast) {
         text: claim.text,
         level: room.allMissions.get(claim.missionId)?.level,
         status: 'validated',
+        validatedBy: witnessNames,
         ts: Date.now(),
       });
       fillMissionSlot(room, requester);
     } else {
       requester.score += SCORE.CONTAMINATION_VALIDATED;
       requester.contaminations += 1;
+      requester.missionHistory.push({
+        missionId: claim.missionId,
+        text: claim.text,
+        level: room.allMissions.get(claim.missionId)?.level,
+        status: 'contamination',
+        validatedBy: witnessNames,
+        ts: Date.now(),
+      });
     }
   }
   for (const witnessId of Object.keys(claim.votes)) {
@@ -270,6 +283,14 @@ export function tabooReport(room, reporter, targetId, tabooId, broadcast) {
     status: 'pending',
     createdAt: Date.now(),
   });
+  reporter.reportsMade.push({
+    reportId,
+    targetId,
+    targetName: target.name,
+    tabooId,
+    status: 'pending',
+    ts: Date.now(),
+  });
   broadcast(room, (tid) =>
     tid === targetId
       ? { type: S2C.NOTIFY, payload: { kind: 'taboo-report', reportId, tabooId } }
@@ -278,7 +299,7 @@ export function tabooReport(room, reporter, targetId, tabooId, broadcast) {
   return { reportId };
 }
 
-export function tabooConfirm(room, target, reportId, accept) {
+export function tabooConfirm(room, target, reportId, accept, broadcast) {
   const report = room.tabooReports.get(reportId);
   if (!report || report.status !== 'pending') return { error: 'Ce signalement n\'est plus disponible.' };
   if (report.targetId !== target.id) return { error: "Ce signalement ne te concerne pas." };
@@ -287,6 +308,23 @@ export function tabooConfirm(room, target, reportId, accept) {
     target.score += SCORE.TABOO_REPORTED_CONFIRMED;
     target.tabooIncidents.push({ tabooId: report.tabooId, type: 'reported', ts: Date.now() });
   }
+  const reporter = room.players.get(report.reporterId);
+  if (reporter) {
+    const entry = reporter.reportsMade.find((r) => r.reportId === reportId);
+    if (entry) entry.status = report.status;
+  }
+  broadcast(room, (tid) =>
+    tid === report.reporterId
+      ? {
+          type: S2C.NOTIFY,
+          payload: {
+            kind: 'report-resolved',
+            accepted: accept,
+            targetName: target.name,
+          },
+        }
+      : null
+  );
   return {};
 }
 
@@ -406,6 +444,7 @@ export function serializeStateFor(room, playerId) {
             missionQueue,
             missionHistory: self.missionHistory,
             tabooIncidents: self.tabooIncidents,
+            reportsMade: self.reportsMade,
             sosHandled: self.sosHandled,
             contaminations: self.contaminations,
           }

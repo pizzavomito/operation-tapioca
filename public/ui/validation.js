@@ -20,7 +20,10 @@ export function renderWitness(ctx, claim, queueLength) {
     vibrate(15);
     ctx.actions.witnessVote(claim.claimId, true);
   });
-  el.querySelector('#no').addEventListener('click', () => ctx.actions.witnessVote(claim.claimId, false));
+  el.querySelector('#no').addEventListener('click', () => {
+    ctx.actions.witnessVote(claim.claimId, false);
+    ctx.dismissWitness(claim.claimId); // le serveur ne fait rien pour un "non" : la fermeture est locale
+  });
   return el;
 }
 

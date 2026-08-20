@@ -227,9 +227,8 @@ function handleAction(ws, room, player, type, payload) {
     }
 
     case C2S.TABOO_CONFIRM: {
-      const res = game.tabooConfirm(room, player, payload.reportId, !!payload.accept);
-      if (res.error) return sendError(ws, res.error);
-      broadcast(room, () => null);
+      const res = game.tabooConfirm(room, player, payload.reportId, !!payload.accept, broadcast);
+      if (res.error) sendError(ws, res.error);
       break;
     }
 

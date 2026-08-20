@@ -34,6 +34,7 @@ let ui = {
   prefillCode: new URLSearchParams(location.search).get('code') || '',
   view: 'terrain', // sous-écran quand la partie est en cours : terrain | dossier
   dismissedSosId: null,
+  dismissedClaimIds: new Set(), // "Pas entendu" : fermeture locale, le serveur ne fait rien exprès
   toast: null,
 };
 
@@ -95,6 +96,13 @@ function showToast(text) {
   ui.toast = text;
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => setUI({ toast: null }), 3200);
+  render();
+}
+
+// "Pas entendu" : le serveur ne fait rien exprès (§4.1, pas de sanction), donc c'est
+// au client de retirer la demande de l'écran — c'est ce qui manquait.
+function dismissWitness(claimId) {
+  ui.dismissedClaimIds.add(claimId);
   render();
 }
 
@@ -174,6 +182,13 @@ function handleNotify(payload) {
       vibrate(20);
       render();
       break;
+    case 'report-resolved':
+      showToast(
+        payload.accepted
+          ? `${payload.targetName} a reconnu le tabou.`
+          : `${payload.targetName} conteste ton signalement.`
+      );
+      break;
     default:
       break;
   }
@@ -189,7 +204,7 @@ function currentScreen() {
 }
 
 function buildCtx() {
-  return { server: serverState, ui, actions, setUI, genericTaboos };
+  return { server: serverState, ui, actions, setUI, genericTaboos, dismissWitness };
 }
 
 function render() {
@@ -240,8 +255,9 @@ function renderOverlay() {
     overlayRoot.appendChild(Validation.renderTabooConfirm(ctx, report, text));
     return;
   }
-  if (pendingWitnessRequests?.length) {
-    overlayRoot.appendChild(Validation.renderWitness(ctx, pendingWitnessRequests[0], pendingWitnessRequests.length));
+  const visibleWitnessRequests = (pendingWitnessRequests || []).filter((r) => !ui.dismissedClaimIds.has(r.claimId));
+  if (visibleWitnessRequests.length) {
+    overlayRoot.appendChild(Validation.renderWitness(ctx, visibleWitnessRequests[0], visibleWitnessRequests.length));
   }
 }
 
