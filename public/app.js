@@ -411,6 +411,7 @@ function renderOverlay() {
       fromName: me.myChallenge.fromName || '?',
       level: me.myChallenge.level,
       text: me.myChallenge.text,
+      expiresAt: me.myChallenge.expiresAt,
     }));
   }
 }
@@ -593,6 +594,14 @@ function sendVisibility() {
   socket.send(C2S.VISIBILITY, { visible: document.visibilityState === 'visible' });
 }
 document.addEventListener('visibilitychange', sendVisibility);
+
+// Fait vivre les comptes à rebours (expiration des défis, cooldowns) sans attendre un nouveau
+// push d'état — sinon "Expire dans 4:32" resterait figé tant que personne d'autre n'agit.
+// Sans danger sur les entrées en cours : la barre de chat n'est jamais redémontée par render()
+// (voir renderChatBar), et l'écran Défis restaure lui-même le focus/la valeur de ses textarea.
+setInterval(() => {
+  if (serverState?.room?.status === 'playing') render();
+}, 1000);
 
 async function boot() {
   try {

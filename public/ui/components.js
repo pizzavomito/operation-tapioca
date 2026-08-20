@@ -24,6 +24,14 @@ export function vibrate(pattern) {
   }
 }
 
+// mm:ss avant expiration — partagé entre l'écran Défis et l'overlay de demande de défi.
+export function fmtCountdown(ms) {
+  const s = Math.max(0, Math.ceil(ms / 1000));
+  const m = Math.floor(s / 60);
+  const r = s % 60;
+  return `${m}:${String(r).padStart(2, '0')}`;
+}
+
 export function levelTag(level) {
   const label = { facile: 'Facile', moyen: 'Moyen', audacieux: 'Audacieux' }[level] || level;
   return `<span class="tag tag-${esc(level)}">${esc(label)}</span>`;

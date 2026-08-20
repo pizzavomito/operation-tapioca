@@ -1,10 +1,10 @@
-import { h, esc, vibrate } from './components.js';
+import { h, esc, vibrate, fmtCountdown } from './components.js';
 
-function fmtCountdown(ms) {
-  const s = Math.max(0, Math.ceil(ms / 1000));
-  const m = Math.floor(s / 60);
-  const r = s % 60;
-  return `${m}:${String(r).padStart(2, '0')}`;
+// Ligne "Expire dans X" sous une carte de défi en cours — silencieuse si pas de date connue.
+function expiryLine(expiresAt, now) {
+  if (!expiresAt) return '';
+  const remaining = expiresAt - now;
+  return `<p class="muted small">Expire dans ${remaining > 0 ? fmtCountdown(remaining) : '0:00'}</p>`;
 }
 
 export function render(root, ctx) {
@@ -64,6 +64,7 @@ export function render(root, ctx) {
           ${me.myChallenge.status === 'accepted'
             ? `<button class="btn btn-primary btn-block" id="challenge-claim">J'ai fini</button>`
             : `<p class="muted small">${esc(me.myChallenge.fromName)} est prévenu, il valide quand il constate.</p>`}
+          ${expiryLine(me.myChallenge.expiresAt, now)}
         </div>
       ` : ''}
 
@@ -77,6 +78,7 @@ export function render(root, ctx) {
             : myLaunched.status === 'accepted'
             ? `<p class="muted small">En attente que ${esc(myLaunched.targetName)} signale que c'est fait.</p>`
             : `<button class="btn btn-primary btn-block" id="challenge-validate">C'est fait</button>`}
+          ${expiryLine(myLaunched.expiresAt, now)}
         </div>
       ` : ''}
 
@@ -85,6 +87,7 @@ export function render(root, ctx) {
           <h3>Ton défi ouvert</h3>
           <p class="mission-text">${esc(myOpenChallenge.text)}</p>
           <p class="muted small">${myOpenChallenge.status === 'awarded' ? "Déjà tranché — tu peux encore changer d'avis." : 'Réponses reçues — désigne qui a trouvé.'}</p>
+          ${expiryLine(myOpenChallenge.expiresAt, now)}
           <div class="history-list">
             ${myOpenChallenge.respondents.map((r) => `
               <div class="history-row">
@@ -107,6 +110,7 @@ export function render(root, ctx) {
           <div class="card stack">
             <div class="muted small">${esc(o.fromName)}</div>
             <p class="mission-text">${esc(o.text)}</p>
+            ${expiryLine(o.expiresAt, now)}
             <textarea data-answer-for="${esc(o.id)}" maxlength="200" placeholder="Ta réponse…">${esc(value)}</textarea>
             <button class="btn btn-block" data-submit-answer="${esc(o.id)}">${o.myAnswer ? 'Modifier ma réponse' : 'Envoyer ma réponse'}</button>
             ${others_.length ? `

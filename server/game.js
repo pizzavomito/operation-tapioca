@@ -555,6 +555,7 @@ export function sendDirectChallenge(room, launcher, targetId, cardId, content, b
     text: card.text,
     status: 'pending', // voir cycle de vie en tête de section
     createdAt: Date.now(),
+    expiresAt: Date.now() + CHALLENGE_ACCEPT_WINDOW_MS, // pour le compte à rebours affiché côté client
     timer,
   });
 
@@ -580,6 +581,7 @@ export function respondChallenge(room, player, challengeId, accept, broadcast) {
 
   challenge.status = 'accepted';
   challenge.timer = setTimeout(() => expireChallenge(room, challengeId, broadcast), CHALLENGE_COMPLETE_WINDOW_MS);
+  challenge.expiresAt = Date.now() + CHALLENGE_COMPLETE_WINDOW_MS;
   broadcast(room, (tid) =>
     tid === challenge.fromId
       ? { type: S2C.NOTIFY, payload: { kind: 'challenge-accepted', name: player.name } }
@@ -600,6 +602,7 @@ export function claimChallenge(room, player, challengeId, broadcast) {
   // Fenêtre repartie à zéro : le lanceur vient d'être prévenu, il doit avoir le temps de
   // constater et valider plutôt qu'hériter d'un compte à rebours déjà bien entamé.
   challenge.timer = setTimeout(() => expireChallenge(room, challengeId, broadcast), CHALLENGE_COMPLETE_WINDOW_MS);
+  challenge.expiresAt = Date.now() + CHALLENGE_COMPLETE_WINDOW_MS;
   broadcast(room, (tid) =>
     tid === challenge.fromId
       ? { type: S2C.NOTIFY, payload: { kind: 'challenge-claimed', name: player.name } }
@@ -655,6 +658,7 @@ export function sendOpenChallenge(room, launcher, cardId, content, broadcast) {
     text: card.text,
     status: 'pending',
     createdAt: Date.now(),
+    expiresAt: Date.now() + OPEN_CHALLENGE_WINDOW_MS, // fixe : contrairement au défi direct, jamais repoussé
     timer,
     answers: new Map(), // playerId -> { text, submittedAt } — réponses écrites, visibles du lanceur seul
     awardedTo: null, // playerId du gagnant actuellement désigné, ou null — voir awardOpenChallenge
@@ -814,6 +818,7 @@ export function serializeStateFor(room, playerId) {
         level: myChallengeRaw.level,
         text: myChallengeRaw.text,
         status: myChallengeRaw.status,
+        expiresAt: myChallengeRaw.expiresAt,
       }
     : null;
   // Le défi que j'ai lancé moi-même : c'est moi qui verrai le bouton « C'est fait » une fois
@@ -829,6 +834,7 @@ export function serializeStateFor(room, playerId) {
         level: myLaunchedChallengeRaw.level,
         text: myLaunchedChallengeRaw.text,
         status: myLaunchedChallengeRaw.status,
+        expiresAt: myLaunchedChallengeRaw.expiresAt,
       }
     : null;
   const openChallenges = self?.isSpectator
@@ -849,6 +855,7 @@ export function serializeStateFor(room, playerId) {
             fromName: room.players.get(c.fromId)?.name,
             text: c.text,
             status: c.status,
+            expiresAt: c.expiresAt,
             myAnswer: c.answers.get(playerId)?.text ?? null,
             awardedTo: isLauncher && c.status === 'awarded' ? c.awardedTo : undefined, // id du gagnant actuel, ou null si "personne"
             respondents: eligible.map((p) => ({

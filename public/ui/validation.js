@@ -1,5 +1,5 @@
 // Overlays plein écran (§6 « Validation » du PRD) : un seul à la fois, une seule action évidente.
-import { h, esc, vibrate } from './components.js';
+import { h, esc, vibrate, fmtCountdown } from './components.js';
 
 export function renderWitness(ctx, claim, queueLength) {
   const kindLabel = claim.kind === 'contamination' ? 'Contamination' : 'Mission';
@@ -47,6 +47,7 @@ export function renderTabooConfirm(ctx, report, tabooText) {
 }
 
 export function renderChallengeRequest(ctx, challenge) {
+  const remaining = challenge.expiresAt ? challenge.expiresAt - Date.now() : null;
   const el = h(`
     <div class="overlay">
       <div class="overlay-card">
@@ -56,7 +57,7 @@ export function renderChallengeRequest(ctx, challenge) {
           <button class="btn" id="decline">Décliner</button>
           <button class="btn btn-success" id="accept">Accepter</button>
         </div>
-        <p class="overlay-queue-hint">Décliner ne coûte rien, personne ne le saura.</p>
+        <p class="overlay-queue-hint">Décliner ne coûte rien, personne ne le saura.${remaining != null ? ` Expire dans ${fmtCountdown(Math.max(0, remaining))}.` : ''}</p>
       </div>
     </div>
   `);
