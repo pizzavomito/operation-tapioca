@@ -260,6 +260,7 @@ export function cancelClaim(room, player, claimId) {
 }
 
 export function witnessVote(room, voter, claimId, vote, broadcast) {
+  if (voter.isSpectator) return { error: 'Un spectateur ne peut pas valider — juste suivre.' };
   const claim = room.claims.get(claimId);
   if (!claim || claim.status !== 'pending') return { error: 'Cette validation n\'est plus disponible.' };
   if (claim.playerId === voter.id) return { error: 'Tu ne peux pas valider ta propre mission.' };
@@ -449,6 +450,7 @@ export function sosRaise(room, player, broadcast) {
 }
 
 export function sosTake(room, responder, sosId, mode, broadcast) {
+  if (responder.isSpectator) return { error: 'Un spectateur ne peut pas répondre — juste suivre.' };
   if (!room.sos || room.sos.id !== sosId || !room.sos.active) return { error: 'Ce SOS n\'est plus disponible.' };
   if (room.sos.raisedBy === responder.id) return { error: 'Tu ne peux pas répondre à ton propre SOS.' };
   room.sos.active = false;
@@ -543,9 +545,12 @@ export function serializeStateFor(room, playerId) {
     ? self.missionQueue.map((id) => room.allMissions.get(id)).filter(Boolean)
     : [];
 
-  const pendingWitnessRequests = [...room.claims.values()]
-    .filter((c) => c.status === 'pending' && c.playerId !== playerId && !c.votes[playerId])
-    .map((c) => ({ claimId: c.id, kind: c.kind, requesterName: room.players.get(c.playerId)?.name, text: c.text }));
+  // Un spectateur ne valide rien — juste suivre — donc il ne reçoit même pas la demande.
+  const pendingWitnessRequests = self?.isSpectator
+    ? []
+    : [...room.claims.values()]
+        .filter((c) => c.status === 'pending' && c.playerId !== playerId && !c.votes[playerId])
+        .map((c) => ({ claimId: c.id, kind: c.kind, requesterName: room.players.get(c.playerId)?.name, text: c.text }));
 
   const myPendingTabooReports = [...room.tabooReports.values()]
     .filter((r) => r.status === 'pending' && r.targetId === playerId)

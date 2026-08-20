@@ -320,7 +320,7 @@ function renderOverlay() {
   const { sos, myPendingTabooReports, pendingWitnessRequests, me } = serverState;
   const ctx = buildCtx();
 
-  if (sos && sos.raisedBy !== me.id && ui.dismissedSosId !== sos.id) {
+  if (sos && sos.raisedBy !== me.id && ui.dismissedSosId !== sos.id && !me.isSpectator) {
     overlayRoot.appendChild(Validation.renderSosRespond(ctx, sos));
     return;
   }
