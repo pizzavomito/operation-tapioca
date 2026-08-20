@@ -48,21 +48,65 @@ export function logEvent(room, text) {
 
 // ---------- Cycle de vie de la partie ----------
 
+// Attribution des tabous + remplissage de la file de missions pour UN joueur — factorisé
+// car utilisé à la fois au lancement (tout le monde) et pour un arrivant en cours de
+// partie (un seul joueur, voir onboardLateJoiner).
+function assignMissionsAndTaboos(room, player, content) {
+  if (player.isSpectator) return; // pas de mission ni de tabou à suivre pour un spectateur
+  const tabooDeck = [...content.taboos, ...room.customTaboos];
+  player.taboos = shuffle(tabooDeck).slice(0, 3).map((t) => t.id);
+  for (let i = 0; i < room.settings.missionQueueMax; i++) fillMissionSlot(room, player);
+}
+
 export function startGame(room, content) {
   room.status = 'playing';
   for (const m of content.missions) room.allMissions.set(m.id, m);
   room.missionPool = shuffle(content.missions.map((m) => m.id));
 
-  const tabooDeck = [...content.taboos, ...room.customTaboos];
-  for (const player of room.players.values()) {
-    if (player.isSpectator) continue; // pas de mission ni de tabou à suivre pour un spectateur
-    player.taboos = shuffle(tabooDeck)
-      .slice(0, 3)
-      .map((t) => t.id);
-    for (let i = 0; i < room.settings.missionQueueMax; i++) fillMissionSlot(room, player);
-  }
+  for (const player of room.players.values()) assignMissionsAndTaboos(room, player, content);
   recomputeWitnessRequirement(room);
   logEvent(room, "🚀 L'opération a commencé.");
+}
+
+// Rejoindre une opération déjà lancée : la partie tourne déjà (allMissions/missionPool
+// existent), il ne manque que l'attribution personnelle du nouvel arrivant.
+export function onboardLateJoiner(room, player, content) {
+  if (room.status !== 'playing') return;
+  assignMissionsAndTaboos(room, player, content);
+  logEvent(room, player.isSpectator ? `👀 ${player.name} rejoint en cours de route.` : `🆕 ${player.name} rejoint l'opération en cours de route.`);
+}
+
+// Départ volontaire (distinct d'une simple perte de connexion) : le joueur quitte pour de
+// bon. S'il revient, ce sera comme un nouvel arrivant (§ demande : "recommence à zéro").
+export function removePlayer(room, playerId) {
+  const player = room.players.get(playerId);
+  if (!player) return null;
+
+  // SOS orphelin : inutile de laisser les autres répondre à quelqu'un qui n'est plus là.
+  if (room.sos && room.sos.active && room.sos.raisedBy === playerId) room.sos = null;
+
+  // Demandes de validation en attente : plus personne pour les voir aboutir.
+  for (const claim of [...room.claims.values()]) {
+    if (claim.playerId === playerId && claim.status === 'pending') {
+      clearTimeout(claim.timer);
+      room.claims.delete(claim.id);
+    }
+  }
+
+  room.players.delete(playerId);
+  room.tokenIndex.delete(player.token);
+
+  if (room.hostId === playerId) {
+    const remaining = [...room.players.values()];
+    const next = remaining.find((p) => !p.isSpectator) || remaining[0];
+    if (next) {
+      room.hostId = next.id;
+      next.isHost = true;
+    }
+  }
+
+  logEvent(room, `🚪 ${player.name} a quitté la partie.`);
+  return player;
 }
 
 export function recomputeWitnessRequirement(room) {

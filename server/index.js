@@ -161,7 +161,9 @@ function handleJoin(ws, payload) {
   if (roomCode) {
     room = store.get(roomCode);
     if (!room) return sendError(ws, 'Partie introuvable. Vérifie le code.');
-    if (room.status !== 'lobby') return sendError(ws, 'La partie a déjà commencé.');
+    if (room.status === 'ended') return sendError(ws, "L'opération est terminée.");
+    // Rejoindre en cours de route est permis (onboardLateJoiner s'occupe de l'attribution) —
+    // seule une partie déjà finie est fermée.
     if (room.players.size >= 8) return sendError(ws, 'La partie est complète (8 agents max).');
   } else {
     const hostId = newId('p');
@@ -176,9 +178,14 @@ function handleJoin(ws, payload) {
   room.tokenIndex.set(player.token, playerId);
   game.recomputeWitnessRequirement(room);
 
+  if (room.status === 'playing') {
+    game.onboardLateJoiner(room, player, content);
+  } else {
+    game.logEvent(room, isSpectator ? `👀 ${player.name} suit la partie.` : `👋 ${player.name} a rejoint la partie.`);
+  }
+
   ws.meta = { roomCode: room.code, playerId };
   sendJSON(ws, { type: S2C.NOTIFY, payload: { kind: 'session', playerId, token: player.token, roomCode: room.code } });
-  game.logEvent(room, isSpectator ? `👀 ${player.name} suit la partie.` : `👋 ${player.name} a rejoint la partie.`);
   broadcast(room, (targetId) =>
     targetId === playerId ? null : { type: S2C.NOTIFY, payload: { kind: 'joined', name: player.name } }
   );
@@ -314,6 +321,14 @@ function handleAction(ws, room, player, type, payload) {
       if (!player.isHost) return sendError(ws, "Seul l'hôte peut clore l'opération.");
       room.debrief = game.endGame(room);
       broadcast(room, () => null);
+      break;
+    }
+
+    case C2S.LEAVE_ROOM: {
+      game.removePlayer(room, player.id);
+      ws.meta = { roomCode: null, playerId: null }; // cette connexion n'a plus de session valide
+      if (room.players.size === 0) store.remove(room.code);
+      else broadcast(room, () => null);
       break;
     }
 

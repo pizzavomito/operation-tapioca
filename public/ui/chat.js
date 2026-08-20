@@ -1,5 +1,17 @@
 import { h, esc } from './components.js';
 
+// Réactions rapides : un tap envoie directement l'emoji comme message de chat, pas besoin
+// d'ouvrir le clavier. Partagé avec l'écran spectateur et la bande de saisie fixe (app.js).
+export const QUICK_EMOTES = ['😂', '👍', '❤️', '😮', '🎉', '🙈'];
+
+export function renderQuickEmotes() {
+  return `
+    <div class="chat-quick-emotes">
+      ${QUICK_EMOTES.map((e) => `<button type="button" class="chat-quick-emote" data-quick-emote="${esc(e)}">${e}</button>`).join('')}
+    </div>
+  `;
+}
+
 // Partagé avec l'écran spectateur (qui incruste le chat dans sa propre carte).
 export function renderMessages(messages, meId) {
   if (!messages || !messages.length) return '<p class="muted small center">Aucun message pour l\'instant.</p>';

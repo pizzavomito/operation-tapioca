@@ -1,4 +1,4 @@
-import { h, esc, levelTag } from './components.js';
+import { h, esc, levelTag, mountTwoTapConfirm } from './components.js';
 
 const STATUS_LABEL = { validated: 'Validée', contamination: 'Contamination', expired: 'Expirée', skipped: 'Passée' };
 const REPORT_STATUS_LABEL = { pending: 'En attente', confirmed: 'Confirmé', rejected: 'Contesté' };
@@ -113,6 +113,11 @@ export function render(root, ctx) {
           <button class="btn btn-danger btn-block" id="end-game">Terminer l'opération</button>
         </div>
       ` : ''}
+
+      <div class="card stack">
+        <button class="btn btn-ghost btn-block" id="leave-room">Quitter la partie</button>
+        <p class="muted small center">Si tu reviens avec le même code, tu recommences à zéro.</p>
+      </div>
     </div>
   `);
 
@@ -126,24 +131,14 @@ export function render(root, ctx) {
     if (targetId && tabooId) ctx.actions.tabooReport(targetId, tabooId);
   });
 
-  const endBtn = el.querySelector('#end-game');
-  if (endBtn) {
-    let confirming = false;
-    let resetTimer = null;
-    endBtn.addEventListener('click', () => {
-      if (!confirming) {
-        confirming = true;
-        endBtn.textContent = 'Sûr ? Retape pour confirmer';
-        resetTimer = setTimeout(() => {
-          confirming = false;
-          endBtn.textContent = "Terminer l'opération";
-        }, 4000);
-      } else {
-        clearTimeout(resetTimer);
-        ctx.actions.gameEnd();
-      }
-    });
-  }
+  mountTwoTapConfirm(el.querySelector('#end-game'), {
+    armedText: 'Sûr ? Retape pour confirmer',
+    onConfirm: () => ctx.actions.gameEnd(),
+  });
+  mountTwoTapConfirm(el.querySelector('#leave-room'), {
+    armedText: 'Sûr ? Retape pour confirmer',
+    onConfirm: () => ctx.actions.leave(),
+  });
 
   root.replaceChildren(el);
 }

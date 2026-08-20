@@ -93,6 +93,10 @@ const actions = {
   sendChat: (text) => socket.send(C2S.CHAT_SEND, { text }),
   gameEnd: () => socket.send(C2S.GAME_END, {}),
   leave: () => {
+    // Départ volontaire : on prévient le serveur pour qu'il libère vraiment la place — sinon
+    // un ancien joueur reste "fantôme" (déconnecté mais toujours dans la partie) pour
+    // toujours. Si on revient plus tard, ce sera comme un nouvel arrivant, pas une reprise.
+    socket.send(C2S.LEAVE_ROOM, {});
     clearSession();
     location.reload();
   },
@@ -435,13 +439,22 @@ function renderChatBar() {
   }
   if (chatBarEl) return; // déjà monté, ses handlers restent valides
   chatBarEl = h(`
-    <form class="chat-input-bar" id="chat-form">
-      <input type="text" id="chat-text" maxlength="500" placeholder="Écrire un message…" autocomplete="off" />
-      <button class="btn btn-primary" type="submit">Envoyer</button>
-    </form>
+    <div class="chat-input-bar">
+      ${Chat.renderQuickEmotes()}
+      <form class="row" id="chat-form">
+        <input type="text" id="chat-text" maxlength="500" placeholder="Écrire un message…" autocomplete="off" style="flex:1;" />
+        <button class="btn btn-primary" type="submit">Envoyer</button>
+      </form>
+    </div>
   `);
   document.body.appendChild(chatBarEl);
-  chatBarEl.addEventListener('submit', (e) => {
+  chatBarEl.querySelectorAll('[data-quick-emote]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      vibrate(10);
+      actions.sendChat(btn.dataset.quickEmote);
+    });
+  });
+  chatBarEl.querySelector('#chat-form').addEventListener('submit', (e) => {
     e.preventDefault();
     const input = chatBarEl.querySelector('#chat-text');
     const text = input.value.trim();

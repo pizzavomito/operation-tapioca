@@ -28,3 +28,26 @@ export function levelTag(level) {
   const label = { facile: 'Facile', moyen: 'Moyen', audacieux: 'Audacieux' }[level] || level;
   return `<span class="tag tag-${esc(level)}">${esc(label)}</span>`;
 }
+
+// Confirmation en deux temps sur un bouton (« Terminer l'opération », « Quitter la partie »...) :
+// premier tap arme le bouton avec un texte différent, deuxième tap dans la fenêtre déclenche
+// vraiment l'action. Évite une boîte de dialogue native (bruyante, pas dans le ton du jeu).
+export function mountTwoTapConfirm(btn, { armedText, onConfirm, timeoutMs = 4000 }) {
+  if (!btn) return;
+  const originalText = btn.textContent;
+  let confirming = false;
+  let resetTimer = null;
+  btn.addEventListener('click', () => {
+    if (!confirming) {
+      confirming = true;
+      btn.textContent = armedText;
+      resetTimer = setTimeout(() => {
+        confirming = false;
+        btn.textContent = originalText;
+      }, timeoutMs);
+    } else {
+      clearTimeout(resetTimer);
+      onConfirm();
+    }
+  });
+}

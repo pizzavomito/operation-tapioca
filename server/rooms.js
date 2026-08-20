@@ -94,6 +94,10 @@ export class RoomStore {
     return null;
   }
 
+  remove(code) {
+    this.rooms.delete((code || '').toUpperCase());
+  }
+
   // Nettoyage des parties terminées ou abandonnées depuis longtemps (>12h).
   sweep() {
     const now = Date.now();

@@ -17,6 +17,7 @@ export const C2S = {
   SOS_RAISE: 'sos:raise',
   SOS_TAKE: 'sos:take',
   GAME_END: 'game:end',
+  LEAVE_ROOM: 'room:leave', // départ volontaire — distinct d'une simple perte de connexion
   PONG: 'pong',
   // Extensions nécessaires au lobby (§6 écran 2 : « réglages hôte », tabous ajoutés par l'hôte)
   // non détaillées dans le tableau §7.1 du PRD mais requises pour le remplir fonctionnellement.

@@ -1,5 +1,5 @@
-import { h, esc, vibrate } from './components.js';
-import { renderMessages as renderChatMessages } from './chat.js';
+import { h, esc, vibrate, mountTwoTapConfirm } from './components.js';
+import { renderMessages as renderChatMessages, renderQuickEmotes, QUICK_EMOTES } from './chat.js';
 import { CHEER_EMOJIS } from '/protocol.js';
 
 const CHEER_LABEL = { '💪': 'Courage', '😘': 'Bisou', '👏': 'Bravo', '🔥': 'Vas-y' };
@@ -57,6 +57,7 @@ export function render(root, ctx) {
       <div class="card">
         <h3 style="margin-bottom:10px;">Chat</h3>
         <div class="chat-messages chat-messages-inline" id="spec-chat">${renderChatMessages(room.chat, me.id)}</div>
+        ${renderQuickEmotes()}
         <form class="row" id="spec-chat-form" style="margin-top:10px;">
           <input type="text" id="spec-chat-text" maxlength="500" placeholder="Écrire un message…" autocomplete="off" style="flex:1;" />
           <button class="btn btn-primary" type="submit" style="min-height:56px;">Envoyer</button>
@@ -69,6 +70,10 @@ export function render(root, ctx) {
           ${log.length === 0 ? '<p class="muted small">Rien pour l\'instant.</p>' : ''}
           ${log.map((entry) => `<div class="log-row">${esc(entry.text)}</div>`).join('')}
         </div>
+      </div>
+
+      <div class="card stack">
+        <button class="btn btn-ghost btn-block" id="leave-room">Quitter la partie</button>
       </div>
     </div>
   `);
@@ -89,6 +94,18 @@ export function render(root, ctx) {
     if (!text) return;
     ctx.actions.sendChat(text);
     input.value = '';
+  });
+
+  el.querySelectorAll('[data-quick-emote]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      vibrate(10);
+      ctx.actions.sendChat(btn.dataset.quickEmote);
+    });
+  });
+
+  mountTwoTapConfirm(el.querySelector('#leave-room'), {
+    armedText: 'Sûr ? Retape pour confirmer',
+    onConfirm: () => ctx.actions.leave(),
   });
 
   root.replaceChildren(el);
