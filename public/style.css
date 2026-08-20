@@ -369,7 +369,9 @@ textarea:focus { outline: 2px solid var(--accent); }
   border-top: 1px solid var(--border);
   z-index: 30;
 }
-.tab-bar .btn { flex: 1; position: relative; }
+/* Jusqu'à 5 onglets (Mission, Dossier, Journal, Chat, Défis) sur une largeur de téléphone : le
+   padding par défaut du .btn générique (14px 20px) est bien trop large pour ça, d'où l'override. */
+.tab-bar .btn { flex: 1; position: relative; padding: 10px 4px; font-size: 0.85rem; }
 .tab-bar .btn.active { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
 .tab-badge {
   position: absolute; top: 4px; right: 10px;

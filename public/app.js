@@ -492,21 +492,22 @@ function renderTabBar() {
       <div class="tab-bar">
         <button class="btn" id="tab-mission">Mission</button>
         <button class="btn" id="tab-dossier">Dossier</button>
+        <button class="btn" id="tab-journal">Journal</button>
         <button class="btn" id="tab-chat">Chat<span class="tab-badge" id="chat-badge" hidden></span></button>
         ${challengesOn ? `<button class="btn" id="tab-challenges">Défis<span class="tab-badge" id="challenges-badge" hidden></span></button>` : ''}
       </div>
     `);
     tabBarEl.querySelector('#tab-mission').addEventListener('click', () => setUI({ view: 'mission' }));
     tabBarEl.querySelector('#tab-dossier').addEventListener('click', () => setUI({ view: 'dossier' }));
+    tabBarEl.querySelector('#tab-journal').addEventListener('click', () => setUI({ view: 'journal' }));
     tabBarEl.querySelector('#tab-chat').addEventListener('click', () => setUI({ view: 'chat' }));
     tabBarEl.querySelector('#tab-challenges')?.addEventListener('click', () => setUI({ view: 'challenges' }));
     document.body.appendChild(tabBarEl);
   }
   const activeViews = ['dossier', 'journal', 'chat', 'challenges'];
   tabBarEl.querySelector('#tab-mission').classList.toggle('active', !activeViews.includes(ui.view));
-  // Le journal est une sous-page du Dossier (pas son propre onglet) : l'onglet Dossier reste
-  // actif quand on y est, comme si on n'en était jamais vraiment sorti.
-  tabBarEl.querySelector('#tab-dossier').classList.toggle('active', ui.view === 'dossier' || ui.view === 'journal');
+  tabBarEl.querySelector('#tab-dossier').classList.toggle('active', ui.view === 'dossier');
+  tabBarEl.querySelector('#tab-journal').classList.toggle('active', ui.view === 'journal');
   tabBarEl.querySelector('#tab-chat').classList.toggle('active', ui.view === 'chat');
   const unread = Math.max(0, (serverState.room.chat || []).length - (ui.chatSeenCount || 0));
   tabBarEl.querySelector('#chat-badge').hidden = ui.view === 'chat' || unread === 0;

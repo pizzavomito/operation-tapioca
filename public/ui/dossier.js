@@ -98,8 +98,6 @@ export function render(root, ctx) {
         </div>
       </div>
 
-      <button class="btn btn-block" id="show-journal">📜 Journal de l'opération</button>
-
       ${me.isHost ? `
         <div class="card stack">
           <h3>Zone hôte</h3>
@@ -120,7 +118,6 @@ export function render(root, ctx) {
   });
 
   el.querySelector('#show-tutorial').addEventListener('click', () => ctx.setUI({ showTutorial: true, tutorialStep: 0 }));
-  el.querySelector('#show-journal').addEventListener('click', () => ctx.setUI({ view: 'journal' }));
 
   el.querySelector('#report-submit')?.addEventListener('click', () => {
     const targetId = el.querySelector('#report-target').value;

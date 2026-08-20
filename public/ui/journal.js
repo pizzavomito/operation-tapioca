@@ -1,5 +1,5 @@
-// Page dédiée au journal (§ demande) : le fil de l'opération, sorti de l'écran Dossier où il
-// était noyé sous les scores, tabous et historique de missions.
+// Page dédiée au journal (§ demande) : le fil de l'opération, avec son propre onglet dans la
+// barre du bas plutôt que noyé sous les scores, tabous et historique de missions du Dossier.
 import { h, esc } from './components.js';
 
 export function render(root, ctx) {
@@ -8,9 +8,6 @@ export function render(root, ctx) {
 
   const el = h(`
     <div class="screen screen-with-tabbar" style="gap:16px;">
-      <div class="row">
-        <button class="btn" id="journal-back">← Retour</button>
-      </div>
       <div class="brand" style="padding-top:0;">
         <h1>Journal</h1>
         <p>Tout ce qui s'est passé, dans l'ordre.</p>
@@ -23,8 +20,6 @@ export function render(root, ctx) {
       </div>
     </div>
   `);
-
-  el.querySelector('#journal-back').addEventListener('click', () => ctx.setUI({ view: 'dossier' }));
 
   root.replaceChildren(el);
 }
