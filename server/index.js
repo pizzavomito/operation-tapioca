@@ -218,6 +218,13 @@ function handleAction(ws, room, player, type, payload) {
       break;
     }
 
+    case C2S.CLAIM_CANCEL: {
+      const res = game.cancelClaim(room, player, payload.claimId);
+      if (res.error) return sendError(ws, res.error);
+      broadcast(room, () => null);
+      break;
+    }
+
     case C2S.TABOO_SELF: {
       const res = game.tabooSelf(room, player, payload.tabooId);
       if (res.error) return sendError(ws, res.error);

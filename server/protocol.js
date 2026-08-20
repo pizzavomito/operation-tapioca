@@ -9,6 +9,7 @@ export const C2S = {
   MISSION_SKIP: 'mission:skip',
   MISSION_WITNESS: 'mission:witness',
   CONTAMINATION_CLAIM: 'contamination:claim',
+  CLAIM_CANCEL: 'claim:cancel', // { claimId } — annule sa propre demande de validation en attente
   TABOO_SELF: 'taboo:self',
   TABOO_REPORT: 'taboo:report',
   TABOO_CONFIRM: 'taboo:confirm',

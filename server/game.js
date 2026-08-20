@@ -201,6 +201,18 @@ export function claimContamination(room, player, missionId, broadcast) {
   return { claimId };
 }
 
+// Retour en arrière avant la fenêtre de 3 min (§4.1) : sans ça, un joueur qui a cliqué
+// « C'est fait » trop vite (personne à portée de voix, mauvais moment) reste bloqué en
+// attente sans pouvoir rien faire d'autre jusqu'à l'expiration automatique.
+export function cancelClaim(room, player, claimId) {
+  const claim = room.claims.get(claimId);
+  if (!claim || claim.status !== 'pending') return { error: 'Cette demande n\'est plus active.' };
+  if (claim.playerId !== player.id) return { error: 'Ce n\'est pas ta demande.' };
+  clearTimeout(claim.timer);
+  room.claims.delete(claimId);
+  return {};
+}
+
 export function witnessVote(room, voter, claimId, vote, broadcast) {
   const claim = room.claims.get(claimId);
   if (!claim || claim.status !== 'pending') return { error: 'Cette validation n\'est plus disponible.' };

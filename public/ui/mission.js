@@ -25,6 +25,7 @@ export function render(root, ctx) {
           <p class="mission-text">${esc(mission.text)}</p>
           ${pendingMission ? `
             <p class="muted small">⏳ En attente d'un témoin pour valider…</p>
+            <button class="btn btn-ghost btn-block" id="cancel-mission">Annuler, revenir à la mission</button>
           ` : `
             <div class="mission-actions">
               <button class="btn btn-ghost" id="skip">Passer</button>
@@ -39,6 +40,7 @@ export function render(root, ctx) {
       <button class="btn btn-block" id="contamination" ${contaminationTarget && !pendingContamination ? '' : 'disabled'}>
         ${pendingContamination ? '⏳ Contamination en attente de témoins…' : '🫧 Contamination sur un non-joueur'}
       </button>
+      ${pendingContamination ? `<button class="btn btn-ghost btn-block" id="cancel-contamination">Annuler la contamination</button>` : ''}
 
       <div class="energy-wrap">
         <div class="energy-label"><span>Énergie sociale</span><span id="energy-value">${me.energy}</span></div>
@@ -64,12 +66,24 @@ export function render(root, ctx) {
     });
     el.querySelector('#skip').addEventListener('click', () => ctx.actions.missionSkip(mission.id));
   }
+  if (pendingMission) {
+    el.querySelector('#cancel-mission').addEventListener('click', (e) => {
+      e.target.disabled = true;
+      ctx.actions.cancelClaim(pendingMission.claimId);
+    });
+  }
 
   if (contaminationTarget && !pendingContamination) {
     el.querySelector('#contamination').addEventListener('click', (e) => {
       e.currentTarget.disabled = true;
       vibrate([20, 40, 20]);
       ctx.actions.contaminationClaim(contaminationTarget);
+    });
+  }
+  if (pendingContamination) {
+    el.querySelector('#cancel-contamination').addEventListener('click', (e) => {
+      e.target.disabled = true;
+      ctx.actions.cancelClaim(pendingContamination.claimId);
     });
   }
 

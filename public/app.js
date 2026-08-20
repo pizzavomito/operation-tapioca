@@ -76,6 +76,7 @@ const actions = {
   missionSkip: (missionId) => socket.send(C2S.MISSION_SKIP, { missionId }),
   witnessVote: (claimId, vote) => socket.send(C2S.MISSION_WITNESS, { claimId, vote }),
   contaminationClaim: (missionId) => socket.send(C2S.CONTAMINATION_CLAIM, { missionId }),
+  cancelClaim: (claimId) => socket.send(C2S.CLAIM_CANCEL, { claimId }),
   tabooSelf: (tabooId) => socket.send(C2S.TABOO_SELF, { tabooId }),
   tabooReport: (targetId, tabooId) => socket.send(C2S.TABOO_REPORT, { targetId, tabooId }),
   tabooConfirm: (reportId, accept) => socket.send(C2S.TABOO_CONFIRM, { reportId, accept }),
