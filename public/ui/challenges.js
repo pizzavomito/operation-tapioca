@@ -1,10 +1,12 @@
 import { h, esc, vibrate, fmtCountdown } from './components.js';
 
 // Ligne "Expire dans X" sous une carte de défi en cours — silencieuse si pas de date connue.
+// Le span porte data-expires-at : c'est app.js qui le fait vivre à la seconde (mise à jour de
+// texte ciblée, pas de re-render — voir le commentaire sur le setInterval dans app.js).
 function expiryLine(expiresAt, now) {
   if (!expiresAt) return '';
   const remaining = expiresAt - now;
-  return `<p class="muted small">Expire dans ${remaining > 0 ? fmtCountdown(remaining) : '0:00'}</p>`;
+  return `<p class="muted small">Expire dans <span data-expires-at="${expiresAt}">${remaining > 0 ? fmtCountdown(remaining) : '0:00'}</span></p>`;
 }
 
 export function render(root, ctx) {

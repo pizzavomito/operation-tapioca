@@ -1,7 +1,7 @@
 // État client + routage d'écrans (§7 du PRD).
 import { GameSocket } from './ws.js';
 import { C2S, S2C } from './protocol.js';
-import { h, esc, vibrate } from './ui/components.js';
+import { h, esc, vibrate, fmtCountdown } from './ui/components.js';
 import * as Home from './ui/home.js';
 import * as Lobby from './ui/lobby.js';
 import * as Mission from './ui/mission.js';
@@ -595,12 +595,18 @@ function sendVisibility() {
 }
 document.addEventListener('visibilitychange', sendVisibility);
 
-// Fait vivre les comptes à rebours (expiration des défis, cooldowns) sans attendre un nouveau
-// push d'état — sinon "Expire dans 4:32" resterait figé tant que personne d'autre n'agit.
-// Sans danger sur les entrées en cours : la barre de chat n'est jamais redémontée par render()
-// (voir renderChatBar), et l'écran Défis restaure lui-même le focus/la valeur de ses textarea.
+// Fait vivre les comptes à rebours (expiration des défis) sans attendre un nouveau push d'état —
+// sinon "Expire dans 4:32" resterait figé tant que personne d'autre n'agit. Surtout : PAS un
+// render() complet ici (ça a été essayé — ça reconstruit tout le DOM chaque seconde, ce qui
+// clignote visiblement sur un vrai téléphone). On se contente de mettre à jour le texte des
+// éléments marqués data-expires-at, où qu'ils soient dans l'écran courant.
 setInterval(() => {
-  if (serverState?.room?.status === 'playing') render();
+  document.querySelectorAll('[data-expires-at]').forEach((el) => {
+    const expiresAt = Number(el.dataset.expiresAt);
+    if (!expiresAt) return;
+    const remaining = expiresAt - Date.now();
+    el.textContent = remaining > 0 ? fmtCountdown(remaining) : '0:00';
+  });
 }, 1000);
 
 async function boot() {

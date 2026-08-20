@@ -47,7 +47,9 @@ export function renderTabooConfirm(ctx, report, tabooText) {
 }
 
 export function renderChallengeRequest(ctx, challenge) {
-  const remaining = challenge.expiresAt ? challenge.expiresAt - Date.now() : null;
+  const remaining = challenge.expiresAt ? Math.max(0, challenge.expiresAt - Date.now()) : null;
+  // Le span data-expires-at est mis à jour à la seconde par app.js (pas de re-render de
+  // l'overlay lui-même — voir le commentaire sur le setInterval dans app.js).
   const el = h(`
     <div class="overlay">
       <div class="overlay-card">
@@ -57,7 +59,7 @@ export function renderChallengeRequest(ctx, challenge) {
           <button class="btn" id="decline">Décliner</button>
           <button class="btn btn-success" id="accept">Accepter</button>
         </div>
-        <p class="overlay-queue-hint">Décliner ne coûte rien, personne ne le saura.${remaining != null ? ` Expire dans ${fmtCountdown(Math.max(0, remaining))}.` : ''}</p>
+        <p class="overlay-queue-hint">Décliner ne coûte rien, personne ne le saura.${remaining != null ? ` Expire dans <span data-expires-at="${challenge.expiresAt}">${fmtCountdown(remaining)}</span>.` : ''}</p>
       </div>
     </div>
   `);
