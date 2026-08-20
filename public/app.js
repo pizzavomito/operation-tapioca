@@ -324,7 +324,9 @@ function renderSosButton() {
     if (sosButtonEl) { sosButtonEl.remove(); sosButtonEl = null; }
     return;
   }
-  const sosInProgress = !!serverState.sos; // quelqu'un — moi ou un autre — a déjà un SOS ouvert
+  // Couleur distincte uniquement pour celui qui l'a levé : c'est sa confirmation que
+  // c'est bien enregistré. Les autres gardent un bouton SOS normal, prêt à l'emploi.
+  const sosInProgress = !!(serverState.sos && serverState.sos.raisedBy === serverState.me.id);
   if (!sosButtonEl) {
     sosButtonEl = h('<button class="sos-button" id="sos">SOS</button>');
     document.body.appendChild(sosButtonEl);
@@ -361,8 +363,6 @@ function renderSosButton() {
     });
     ['pointerup', 'pointercancel', 'pointerleave'].forEach((evt) => sosButtonEl.addEventListener(evt, reset));
   }
-  // Couleur distincte tant qu'un SOS est ouvert (le sien ou celui de quelqu'un d'autre) :
-  // avant, le bouton restait rouge alarme en permanence, sans dire qu'il ne servait à rien.
   sosButtonEl.classList.toggle('in-progress', sosInProgress);
   sosButtonEl.textContent = sosInProgress ? '…' : 'SOS';
 }
