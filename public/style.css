@@ -16,6 +16,7 @@
   --tap-min: 56px;
   --radius: 18px;
   --radius-sm: 12px;
+  --tabbar-h: 72px; /* barre d'onglets fixe, hors safe-area */
   color-scheme: dark;
 }
 
@@ -199,7 +200,7 @@ select:focus { outline: 2px solid var(--accent); }
 .qr-wrap { display: flex; justify-content: center; padding: 8px 0; }
 .qr-wrap img { width: 168px; height: 168px; border-radius: var(--radius-sm); background: #fff; padding: 8px; }
 
-/* ---------- Terrain ---------- */
+/* ---------- Mission ---------- */
 .mission-card {
   flex: 1;
   display: flex;
@@ -269,7 +270,8 @@ select:focus { outline: 2px solid var(--accent); }
 .sos-button {
   position: fixed;
   right: max(18px, env(safe-area-inset-right));
-  bottom: max(18px, env(safe-area-inset-bottom));
+  /* flotte au-dessus de la barre d'onglets fixe, jamais superposé */
+  bottom: calc(var(--tabbar-h) + max(14px, env(safe-area-inset-bottom)));
   width: 76px; height: 76px; border-radius: 50%;
   background: var(--danger); color: #2a0d06;
   border: none; font-weight: 800; font-size: 0.85rem;
@@ -281,12 +283,21 @@ select:focus { outline: 2px solid var(--accent); }
   background: conic-gradient(#fff var(--charge, 0%), var(--danger) 0);
 }
 
-.bottom-nav {
+/* Barre d'onglets fixe (Mission / Dossier) : toujours atteignable, jamais besoin de scroller. */
+.tab-bar {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
   display: flex; gap: 8px;
-  padding-top: 4px;
+  padding: 8px max(16px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  background: var(--bg-elevated);
+  border-top: 1px solid var(--border);
+  z-index: 30;
 }
-.bottom-nav .btn { flex: 1; }
-.bottom-nav .btn.active { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.tab-bar .btn { flex: 1; }
+.tab-bar .btn.active { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+
+/* Réserve la place de la barre fixe en bas du contenu défilant, pour que rien ne soit masqué. */
+.screen-with-tabbar { padding-bottom: calc(var(--tabbar-h) + 12px); }
 
 /* ---------- Overlays plein écran (§6 Validation) ---------- */
 .overlay {
@@ -369,7 +380,9 @@ select:focus { outline: 2px solid var(--accent); }
 
 /* ---------- Toast discret ---------- */
 .toast {
-  position: fixed; left: 50%; bottom: max(18px, env(safe-area-inset-bottom));
+  position: fixed; left: 50%;
+  /* flotte au-dessus de la barre d'onglets quand elle est affichée (en jeu) */
+  bottom: calc(var(--tabbar-h) + max(14px, env(safe-area-inset-bottom)));
   transform: translateX(-50%);
   background: var(--bg-elevated-2); border: 1px solid var(--border);
   padding: 10px 16px; border-radius: 999px; font-size: 0.82rem;

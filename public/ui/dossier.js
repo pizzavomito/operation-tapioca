@@ -13,7 +13,7 @@ export function render(root, ctx) {
   const ranked = players.slice().sort((a, b) => b.score - a.score);
 
   const el = h(`
-    <div class="screen" style="gap:16px;">
+    <div class="screen screen-with-tabbar" style="gap:16px;">
       <div class="score-hero">
         <div class="muted small">Ton score</div>
         <div class="value">${me.score}</div>
@@ -95,11 +95,6 @@ export function render(root, ctx) {
           `).join('')}
         </div>
       </div>
-
-      <div class="bottom-nav">
-        <button class="btn" id="nav-terrain">Terrain</button>
-        <button class="btn active" id="nav-dossier">Dossier</button>
-      </div>
     </div>
   `);
 
@@ -112,8 +107,6 @@ export function render(root, ctx) {
     const tabooId = el.querySelector('#report-taboo').value;
     if (targetId && tabooId) ctx.actions.tabooReport(targetId, tabooId);
   });
-
-  el.querySelector('#nav-terrain').addEventListener('click', () => ctx.setUI({ view: 'terrain' }));
 
   root.replaceChildren(el);
 }

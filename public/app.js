@@ -4,7 +4,7 @@ import { C2S, S2C } from './protocol.js';
 import { h, esc, vibrate } from './ui/components.js';
 import * as Home from './ui/home.js';
 import * as Lobby from './ui/lobby.js';
-import * as Terrain from './ui/terrain.js';
+import * as Mission from './ui/mission.js';
 import * as Dossier from './ui/dossier.js';
 import * as Debrief from './ui/debrief.js';
 import * as Validation from './ui/validation.js';
@@ -33,7 +33,7 @@ let ui = {
   homeCode: '',
   joinError: null,
   prefillCode: new URLSearchParams(location.search).get('code') || '',
-  view: 'terrain', // sous-écran quand la partie est en cours : terrain | dossier
+  view: 'mission', // sous-écran quand la partie est en cours : mission | dossier
   dismissedSosId: null,
   dismissedClaimIds: new Set(), // "Pas entendu" : fermeture locale, le serveur ne fait rien exprès
   toast: null,
@@ -199,7 +199,7 @@ function currentScreen() {
   if (!session || !serverState) return 'loading';
   const status = serverState.room.status;
   if (status === 'lobby') return 'lobby';
-  if (status === 'playing') return ui.view === 'dossier' ? 'dossier' : 'terrain';
+  if (status === 'playing') return ui.view === 'dossier' ? 'dossier' : 'mission';
   if (status === 'ended') return 'debrief';
   return 'loading';
 }
@@ -215,6 +215,7 @@ function render() {
   renderOverlay();
   renderToast();
   renderSosButton();
+  renderTabBar();
 }
 
 function renderBanner() {
@@ -257,7 +258,7 @@ function renderScreen() {
     return;
   }
   if (screen === 'lobby') return Lobby.render(screenRoot, ctx);
-  if (screen === 'terrain') return Terrain.render(screenRoot, ctx);
+  if (screen === 'mission') return Mission.render(screenRoot, ctx);
   if (screen === 'dossier') return Dossier.render(screenRoot, ctx);
   if (screen === 'debrief') return Debrief.render(screenRoot, ctx);
 }
@@ -328,6 +329,30 @@ function renderSosButton() {
     raf = requestAnimationFrame(tick);
   });
   ['pointerup', 'pointercancel', 'pointerleave'].forEach((evt) => sosButtonEl.addEventListener(evt, reset));
+}
+
+// Barre d'onglets fixe (Mission / Dossier) : montée une fois comme le bouton SOS, jamais
+// dans le flux scrollable — plus besoin de scroller pour l'atteindre.
+let tabBarEl = null;
+function renderTabBar() {
+  const shouldShow = serverState?.room?.status === 'playing';
+  if (!shouldShow) {
+    if (tabBarEl) { tabBarEl.remove(); tabBarEl = null; }
+    return;
+  }
+  if (!tabBarEl) {
+    tabBarEl = h(`
+      <div class="tab-bar">
+        <button class="btn" id="tab-mission">Mission</button>
+        <button class="btn" id="tab-dossier">Dossier</button>
+      </div>
+    `);
+    tabBarEl.querySelector('#tab-mission').addEventListener('click', () => setUI({ view: 'mission' }));
+    tabBarEl.querySelector('#tab-dossier').addEventListener('click', () => setUI({ view: 'dossier' }));
+    document.body.appendChild(tabBarEl);
+  }
+  tabBarEl.querySelector('#tab-mission').classList.toggle('active', ui.view !== 'dossier');
+  tabBarEl.querySelector('#tab-dossier').classList.toggle('active', ui.view === 'dossier');
 }
 
 async function boot() {

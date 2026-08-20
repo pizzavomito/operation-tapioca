@@ -11,7 +11,7 @@ export function render(root, ctx) {
   const pendingContamination = contaminationTarget && pendingClaims.find((c) => c.kind === 'contamination' && c.missionId === contaminationTarget);
 
   const el = h(`
-    <div class="screen" style="gap:14px;">
+    <div class="screen screen-with-tabbar" style="gap:14px;">
       <div class="row">
         <span class="muted small">Salle : ${esc(ctx.server.room.code)}</span>
         <span class="spacer"></span>
@@ -52,11 +52,6 @@ export function render(root, ctx) {
           </div>
         `).join('')}
       </div>
-
-      <div class="bottom-nav">
-        <button class="btn active" id="nav-terrain">Terrain</button>
-        <button class="btn" id="nav-dossier">Dossier</button>
-      </div>
     </div>
   `);
 
@@ -85,8 +80,6 @@ export function render(root, ctx) {
     clearTimeout(energyDebounce);
     energyDebounce = setTimeout(() => ctx.actions.setEnergy(Number(energyInput.value)), 200);
   });
-
-  el.querySelector('#nav-dossier').addEventListener('click', () => ctx.setUI({ view: 'dossier' }));
 
   root.replaceChildren(el);
 }
