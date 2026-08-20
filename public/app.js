@@ -329,9 +329,12 @@ function renderStatusStrip() {
   const witnessCount = (serverState.pendingWitnessRequests || []).length;
   const sos = serverState.sos && serverState.sos.raisedBy !== serverState.me.id ? serverState.sos : null;
   const inProgress = (c) => !!c && (c.status === 'accepted' || c.status === 'claimed');
-  const activeChallenge = (inProgress(serverState.me.myChallenge) ? serverState.me.myChallenge : null)
+  const activeDirectChallenge = (inProgress(serverState.me.myChallenge) ? serverState.me.myChallenge : null)
     || (inProgress(serverState.me.myLaunchedChallenge) ? serverState.me.myLaunchedChallenge : null);
-  if (!witnessCount && !sos && !activeChallenge) return;
+  // Défis ouverts : visibles depuis n'importe quel onglet dès qu'il y en a un en cours, que ce
+  // soit le mien (à désigner) ou celui d'un autre agent (à qui répondre).
+  const activeOpenChallenges = (serverState.openChallenges || []).length;
+  if (!witnessCount && !sos && !activeDirectChallenge && !activeOpenChallenges) return;
 
   const pills = [];
   if (witnessCount) {
@@ -340,13 +343,16 @@ function renderStatusStrip() {
   if (sos) {
     pills.push(`<button class="status-pill status-pill-urgent" data-reopen="sos">🆘 SOS — ${esc(sos.raisedByName)}</button>`);
   }
-  if (activeChallenge) {
+  if (activeDirectChallenge) {
     pills.push(`<button class="status-pill" data-reopen="challenge">🎲 Défi en cours</button>`);
+  }
+  if (activeOpenChallenges) {
+    pills.push(`<button class="status-pill" data-reopen="challenge">🏆 ${activeOpenChallenges > 1 ? `${activeOpenChallenges} défis ouverts` : 'Défi ouvert'} en cours</button>`);
   }
   const strip = h(`<div class="status-strip">${pills.join('')}</div>`);
   strip.querySelector('[data-reopen="witness"]')?.addEventListener('click', () => setUI({ dismissedClaimIds: new Set() }));
   strip.querySelector('[data-reopen="sos"]')?.addEventListener('click', () => setUI({ dismissedSosId: null }));
-  strip.querySelector('[data-reopen="challenge"]')?.addEventListener('click', () => setUI({ view: 'challenges' }));
+  strip.querySelectorAll('[data-reopen="challenge"]').forEach((btn) => btn.addEventListener('click', () => setUI({ view: 'challenges' })));
   statusRoot.appendChild(strip);
 }
 

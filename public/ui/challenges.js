@@ -76,40 +76,7 @@ export function render(root, ctx) {
             ? `<p class="muted small">En attente que ${esc(myLaunched.targetName)} signale que c'est fait.</p>`
             : `<button class="btn btn-primary btn-block" id="challenge-validate">C'est fait</button>`}
         </div>
-      ` : `
-        <div class="card stack">
-          <h3>Lancer un défi direct</h3>
-          <p class="muted small">Choisis quelqu'un, un niveau, puis la carte précise à lui envoyer dans la liste. C'est toi qui valideras quand ce sera fait.</p>
-          <select id="challenge-target" ${others.length ? '' : 'disabled'}>
-            ${others.map((p) => `<option value="${esc(p.id)}" ${p.id === targetId ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}
-          </select>
-          <div class="row">
-            <button class="btn ${level === 'leger' ? 'btn-primary' : ''}" id="challenge-level-leger" ${!canSendDirect ? 'disabled' : ''}>Léger</button>
-            <button class="btn ${level === 'corse' ? 'btn-primary' : ''}" id="challenge-level-corse" ${!canSendDirect ? 'disabled' : ''}>Corsé</button>
-          </div>
-          ${directWait > 0 ? `<p class="muted small center">Encore ${fmtCountdown(directWait)} avant de pouvoir relancer.</p>` : ''}
-          ${canSendDirect ? `
-            <select id="challenge-card">
-              <option value="">Choisis une carte…</option>
-              ${deckCards.map((c) => `<option value="${esc(c.id)}" ${c.id === cardId ? 'selected' : ''}>${esc(c.text)}</option>`).join('')}
-            </select>
-            <button class="btn btn-primary btn-block" id="challenge-send-direct" ${!targetId || !cardId ? 'disabled' : ''}>Envoyer le défi</button>
-          ` : ''}
-        </div>
-      `}
-
-      <div class="card stack">
-        <h3>Lancer un défi ouvert</h3>
-        <p class="muted small">Choisis une question posée à tout le monde — chacun répond dans sa carte, tu désigneras le gagnant toi-même.</p>
-        ${canSendOpen ? `
-          <select id="open-challenge-card">
-            <option value="">Choisis une question…</option>
-            ${openDeck.map((c) => `<option value="${esc(c.id)}" ${c.id === openCardId ? 'selected' : ''}>${esc(c.text)}</option>`).join('')}
-          </select>
-          <button class="btn btn-primary btn-block" id="challenge-open" ${!openCardId ? 'disabled' : ''}>Lancer le défi ouvert</button>
-        ` : ''}
-        ${openWait > 0 && !myOpenChallenge ? `<p class="muted small center">Encore ${fmtCountdown(openWait)} avant de pouvoir relancer.</p>` : ''}
-      </div>
+      ` : ''}
 
       ${myOpenChallenge ? `
         <div class="card stack">
@@ -146,6 +113,41 @@ export function render(root, ctx) {
           </div>
         `;
       }).join('')}
+
+      ${!myLaunched ? `
+        <div class="card stack">
+          <h3>Lancer un défi direct</h3>
+          <p class="muted small">Choisis quelqu'un, un niveau, puis la carte précise à lui envoyer dans la liste. C'est toi qui valideras quand ce sera fait.</p>
+          <select id="challenge-target" ${others.length ? '' : 'disabled'}>
+            ${others.map((p) => `<option value="${esc(p.id)}" ${p.id === targetId ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}
+          </select>
+          <div class="row">
+            <button class="btn ${level === 'leger' ? 'btn-primary' : ''}" id="challenge-level-leger" ${!canSendDirect ? 'disabled' : ''}>Léger</button>
+            <button class="btn ${level === 'corse' ? 'btn-primary' : ''}" id="challenge-level-corse" ${!canSendDirect ? 'disabled' : ''}>Corsé</button>
+          </div>
+          ${directWait > 0 ? `<p class="muted small center">Encore ${fmtCountdown(directWait)} avant de pouvoir relancer.</p>` : ''}
+          ${canSendDirect ? `
+            <select id="challenge-card">
+              <option value="">Choisis une carte…</option>
+              ${deckCards.map((c) => `<option value="${esc(c.id)}" ${c.id === cardId ? 'selected' : ''}>${esc(c.text)}</option>`).join('')}
+            </select>
+            <button class="btn btn-primary btn-block" id="challenge-send-direct" ${!targetId || !cardId ? 'disabled' : ''}>Envoyer le défi</button>
+          ` : ''}
+        </div>
+      ` : ''}
+
+      <div class="card stack">
+        <h3>Lancer un défi ouvert</h3>
+        <p class="muted small">Choisis une question posée à tout le monde — chacun répond dans sa carte, tu désigneras le gagnant toi-même.</p>
+        ${canSendOpen ? `
+          <select id="open-challenge-card">
+            <option value="">Choisis une question…</option>
+            ${openDeck.map((c) => `<option value="${esc(c.id)}" ${c.id === openCardId ? 'selected' : ''}>${esc(c.text)}</option>`).join('')}
+          </select>
+          <button class="btn btn-primary btn-block" id="challenge-open" ${!openCardId ? 'disabled' : ''}>Lancer le défi ouvert</button>
+        ` : ''}
+        ${openWait > 0 && !myOpenChallenge ? `<p class="muted small center">Encore ${fmtCountdown(openWait)} avant de pouvoir relancer.</p>` : ''}
+      </div>
     </div>
   `);
 
