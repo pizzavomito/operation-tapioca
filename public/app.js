@@ -20,7 +20,11 @@ appRoot.append(bannerRoot, statusRoot, screenRoot);
 
 const overlayRoot = h('<div id="overlay-root"></div>');
 const toastRoot = h('<div id="toast-root"></div>');
-document.body.append(overlayRoot, toastRoot);
+// Élément dédié pour le flash visuel (SOS, demande de témoin) : position fixed sur tout
+// le viewport, indépendant de la hauteur réelle du contenu — contrairement à #app qui
+// grandit avec la page et rendait le halo invisible dès que l'écran scrollait.
+const flashRoot = h('<div id="flash-root"></div>');
+document.body.append(overlayRoot, toastRoot, flashRoot);
 
 let session = loadSession();
 let serverState = null; // dernier payload de 'state'
@@ -115,11 +119,11 @@ function dismissWitness(claimId) {
 // silencieusement bloqué. Un pulse unique (pas un clignotement répété, §6 du PRD) sur le
 // bord de l'écran garantit un signal visible même sans haptique.
 function flashScreen(tone) {
-  appRoot.classList.remove('flash-accent', 'flash-danger');
+  flashRoot.classList.remove('flash-accent', 'flash-danger');
   // relance l'animation même si la précédente n'est pas finie
-  void appRoot.offsetWidth;
-  appRoot.classList.add(`flash-${tone}`);
-  setTimeout(() => appRoot.classList.remove(`flash-${tone}`), 700);
+  void flashRoot.offsetWidth;
+  flashRoot.classList.add(`flash-${tone}`);
+  setTimeout(() => flashRoot.classList.remove(`flash-${tone}`), 700);
 }
 
 function handleMessage(msg) {
